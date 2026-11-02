@@ -21,7 +21,6 @@ import { RunDays } from "@/features/trains/train-parts";
 
 const BATCH = 10;
 const day = (d: string) => fmtDate(d, { weekday: "short", day: "numeric", month: "short" });
-const GOOD: AvailabilityType[] = ["AVAILABLE", "RAC"];
 
 type Cal = { cls: string; days: SeatAvailability["days"] }[];
 
@@ -50,25 +49,51 @@ interface Verdict {
   goodDates: string[];
 }
 
-/** Where a train stands: seats on the date, seats a few days away, or waitlist only */
-function verdict(r: SeatCheckResult | undefined, date: string, from: string, to: string): Verdict {
+/** Where a train stands: seats on the date, seats a few days away, or nothing bookable */
+function verdict(r: SeatCheckResult | undefined, date: string, from: string, to: string, good: AvailabilityType[], clsFilter: string): Verdict {
   if (!r) return { state: "pending", seats: [], goodDates: [] };
   if (!r.ok || !r.data) return { state: "unknown", seats: [], goodDates: [] };
-  const cal = calendars(r.data);
+  const cal = calendars(r.data).filter((c) => !clsFilter || c.cls === clsFilter);
   const inWindow = (d: string) => d >= from && d <= to;
-  const good = new Set<string>();
-  for (const c of cal) for (const x of c.days) if (GOOD.includes(x.type) && inWindow(x.date)) good.add(x.date);
+  const dates = new Set<string>();
+  for (const c of cal) for (const x of c.days) if (good.includes(x.type) && inWindow(x.date)) dates.add(x.date);
   const seatsOn = (d: string) =>
-    cal.flatMap((c) => c.days.filter((x) => x.date === d && GOOD.includes(x.type)).map((x) => ({ cls: c.cls, label: short(x.status, x.type), type: x.type })));
-  if (good.has(date)) return { state: "today", date, seats: seatsOn(date), goodDates: [...good].sort() };
-  if (good.size) {
+    cal.flatMap((c) => c.days.filter((x) => x.date === d && good.includes(x.type)).map((x) => ({ cls: c.cls, label: short(x.status, x.type), type: x.type })));
+  if (dates.has(date)) return { state: "today", date, seats: seatsOn(date), goodDates: [...dates].sort() };
+  if (dates.size) {
     // Nearest date to the one asked for; earlier wins a tie
-    const best = [...good].sort((a, b) => Math.abs(Date.parse(a) - Date.parse(date)) - Math.abs(Date.parse(b) - Date.parse(date)) || a.localeCompare(b))[0];
-    return { state: "nearby", date: best, seats: seatsOn(best), goodDates: [...good].sort() };
+    const best = [...dates].sort((a, b) => Math.abs(Date.parse(a) - Date.parse(date)) - Math.abs(Date.parse(b) - Date.parse(date)) || a.localeCompare(b))[0];
+    return { state: "nearby", date: best, seats: seatsOn(best), goodDates: [...dates].sort() };
   }
-  const anyDay = cal.flatMap((c) => c.days.filter((x) => inWindow(x.date)).map((x) => ({ cls: c.cls, label: short(x.status, x.type), type: x.type, date: x.date })));
-  const near = anyDay.sort((a, b) => Math.abs(Date.parse(a.date) - Date.parse(date)) - Math.abs(Date.parse(b.date) - Date.parse(date)));
-  return { state: "waitlist", date: near[0]?.date, seats: near.filter((x) => x.date === near[0]?.date), goodDates: [] };
+  return { state: "waitlist", seats: [], goodDates: [] };
+}
+
+const TIMES = [
+  { id: "morning", label: "Morning", test: (h: number) => h >= 5 && h < 12 },
+  { id: "afternoon", label: "Afternoon", test: (h: number) => h >= 12 && h < 17 },
+  { id: "evening", label: "Evening", test: (h: number) => h >= 17 && h < 21 },
+  { id: "night", label: "Night", test: (h: number) => h >= 21 || h < 5 },
+];
+
+const seatCount = (v: Verdict) => v.seats.reduce((n, s) => n + Number(s.label.match(/\d+/)?.[0] ?? 0), 0);
+
+function Chips({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-1 font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          className={cx("rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", value === o.value ? "border-ink bg-ink text-white" : "border-slate-200 bg-white text-slate-600 hover:border-ink hover:text-ink")}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 async function checkSeats(checks: SeatCheck[], quota: string): Promise<SeatCheckResult[]> {
@@ -89,8 +114,14 @@ export function PlannerView() {
   const ready = Boolean(q.from && q.to && q.date);
   const cls = q.class || "ANY";
   const quota = q.quota || "GN";
-  const flex = Math.min(5, Math.max(0, Number(q.flex || 3)));
-  const onlySeats = q.show !== "all";
+  const flex = Math.min(7, Math.max(0, Number(q.flex || 3)));
+  // Filters applied to the results
+  const [rac, setRac] = useState(false);
+  const [clsFilter, setClsFilter] = useState("");
+  const [fromStation, setFromStation] = useState("");
+  const [toStation, setToStation] = useState("");
+  const [timeOfDay, setTimeOfDay] = useState("");
+  const [sort, setSort] = useState<"time" | "fast" | "seats">("time");
   const today = todayIST();
   const winFrom = [addDays(q.date || today, -flex), today].sort().at(-1)!;
   const winTo = addDays(q.date || today, flex);
@@ -130,12 +161,26 @@ export function PlannerView() {
     if (direct.state.status === "success") addRecent({ kind: "planner", label: `${direct.state.data.from.label} → ${direct.state.data.to.label} · ${fmtDate(q.date, { day: "numeric", month: "short" })}`, href: `/seats?${params.toString()}` });
   }, [direct.state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const rows = trains.map((t, i) => ({ t, v: verdict(seats[seatKey(checks[i])], q.date, winFrom, winTo) }));
-  const pending = rows.filter((r) => r.v.state === "pending").length;
+  const good = useMemo<AvailabilityType[]>(() => (rac ? ["AVAILABLE", "RAC"] : ["AVAILABLE"]), [rac]);
+  const allRows = trains.map((t, i) => ({ t, v: verdict(seats[seatKey(checks[i])], q.date, winFrom, winTo, good, clsFilter) }));
+  const pending = allRows.filter((r) => r.v.state === "pending").length;
+  const failed = allRows.filter((r) => r.v.state === "unknown").length;
+  // Classes that have seats on any train, for the class filter
+  const classOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of trains) {
+      const r = seats[seatKey({ train: t.trainNumber, from: t.from.code, to: t.to.code, date: winFrom, class: cls })];
+      if (r?.ok && r.data) for (const c of calendars(r.data)) set.add(c.cls);
+    }
+    return [...set].sort();
+  }, [trains, seats, winFrom, cls]); // eslint-disable-line react-hooks/exhaustive-deps
+  const timeTest = TIMES.find((x) => x.id === timeOfDay)?.test;
+  const rows = allRows.filter(({ t }) => (!fromStation || t.from.code === fromStation) && (!toStation || t.to.code === toStation) && (!timeTest || timeTest(Number(t.departure.slice(0, 2)))));
+  const order = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+    sort === "fast" ? (a.t.durationMinutes ?? 0) - (b.t.durationMinutes ?? 0) : sort === "seats" ? seatCount(b.v) - seatCount(a.v) : a.t.departure.localeCompare(b.t.departure);
   const groups = {
-    today: rows.filter((r) => r.v.state === "today").sort((a, b) => a.t.departure.localeCompare(b.t.departure)),
-    nearby: rows.filter((r) => r.v.state === "nearby").sort((a, b) => Math.abs(Date.parse(a.v.date!) - Date.parse(q.date)) - Math.abs(Date.parse(b.v.date!) - Date.parse(q.date)) || a.t.departure.localeCompare(b.t.departure)),
-    waitlist: rows.filter((r) => r.v.state === "waitlist" || r.v.state === "unknown"),
+    today: rows.filter((r) => r.v.state === "today").sort(order),
+    nearby: rows.filter((r) => r.v.state === "nearby").sort((a, b) => Math.abs(Date.parse(a.v.date!) - Date.parse(q.date)) - Math.abs(Date.parse(b.v.date!) - Date.parse(q.date)) || order(a, b)),
   };
   // Trains with seats on each day of the window
   const byDay = useMemo(() => {
@@ -204,33 +249,47 @@ export function PlannerView() {
                     </ul>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[14px] text-slate-600">
-                      <strong className="font-semibold text-ink">{groups.today.length}</strong> with seats on {day(q.date)} ·{" "}
-                      <strong className="font-semibold text-ink">{groups.nearby.length}</strong> on a nearby date
-                    </p>
-                    <label className="flex cursor-pointer items-center gap-2 text-[13.5px] font-medium text-slate-700">
-                      <input type="checkbox" checked={onlySeats} onChange={(e) => setParams({ show: e.target.checked ? "seats" : "all" })} className="size-4 accent-[var(--color-ink)]" />
-                      Only trains with seats
-                    </label>
+                  {/* Filters: only trains with seats are listed, so these narrow them further */}
+                  <div className="space-y-3 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[var(--shadow-card)]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-[14px] text-slate-600">
+                        <strong className="font-semibold text-ink">{groups.today.length}</strong> with seats on {day(q.date)} ·{" "}
+                        <strong className="font-semibold text-ink">{groups.nearby.length}</strong> on a nearby date
+                      </p>
+                      <label className="flex cursor-pointer items-center gap-2 text-[13.5px] font-medium text-slate-700">
+                        <input type="checkbox" checked={rac} onChange={(e) => setRac(e.target.checked)} className="size-4 accent-[var(--color-ink)]" />
+                        Include RAC
+                      </label>
+                    </div>
+                    {d.from.stations.length > 1 && (
+                      <Chips label="From" value={fromStation} onChange={setFromStation} options={[{ value: "", label: "Any station" }, ...d.from.stations.map((s) => ({ value: s.code, label: `${s.name} (${s.code})` }))]} />
+                    )}
+                    {d.to.stations.length > 1 && (
+                      <Chips label="To" value={toStation} onChange={setToStation} options={[{ value: "", label: "Any station" }, ...d.to.stations.map((s) => ({ value: s.code, label: `${s.name} (${s.code})` }))]} />
+                    )}
+                    {classOptions.length > 1 && (
+                      <Chips label="Class" value={clsFilter} onChange={setClsFilter} options={[{ value: "", label: "All" }, ...classOptions.map((c) => ({ value: c, label: c }))]} />
+                    )}
+                    <Chips label="Leaves" value={timeOfDay} onChange={setTimeOfDay} options={[{ value: "", label: "Any time" }, ...TIMES.map((x) => ({ value: x.id, label: x.label }))]} />
+                    <Chips label="Sort" value={sort} onChange={(v) => setSort(v as typeof sort)} options={[{ value: "time", label: "Departure" }, { value: "fast", label: "Fastest" }, { value: "seats", label: "Most seats" }]} />
                   </div>
 
                   <Group title={`Seats on ${day(q.date)}`} rows={groups.today} cls={cls} quota={quota} />
                   <Group title="Seats on a nearby date" note="Full on your date, open close to it." rows={groups.nearby} cls={cls} quota={quota} />
-                  {!onlySeats && <Group title="Waitlist only" note="No confirmed or RAC seats in your window." rows={groups.waitlist} cls={cls} quota={quota} />}
                   {pending > 0 && (
                     <div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: Math.min(pending, 4) }, (_, i) => <Skeleton key={i} className="h-28 rounded-[20px]" />)}</div>
                   )}
                   {!pending && !groups.today.length && !groups.nearby.length && (
-                    <EmptyState title="No direct seats in your window">
-                      Every direct train is waitlisted between {day(winFrom)} and {day(winTo)}. Widen the dates, try another class, or take one of the journeys with a change below.
+                    <EmptyState title="No direct seats found">
+                      No direct train has {rac ? "seats or RAC" : "available seats"} between {day(winFrom)} and {day(winTo)}{fromStation || toStation || timeOfDay || clsFilter ? " with these filters" : ""}. Widen the dates, clear a filter, include RAC or try another class. One-change journeys with seats are below.
                     </EmptyState>
                   )}
+                  {!pending && failed > 0 && <p className="text-[12.5px] text-slate-400">{failed} train{failed === 1 ? "" : "s"} could not be checked right now.</p>}
                 </div>
               )}
             </ApiResult>
 
-            <Connections state={conns.state} retry={conns.refresh} cls={cls} quota={quota} />
+            <Connections state={conns.state} retry={conns.refresh} cls={cls} quota={quota} good={good} clsFilter={clsFilter} />
           </div>
         )}
       </Section>
@@ -297,7 +356,44 @@ function TrainCard({ t, v, cls, quota }: { t: TrainBetween; v: Verdict; cls: str
 
 // ---------- With one change ----------
 
-function Connections({ state, retry, cls, quota }: { state: ReturnType<typeof useApi<PlanConnections>>["state"]; retry: () => void; cls: string; quota: string }) {
+type Option = PlanConnection;
+
+/** Seat labels for a leg on its own date, restricted to the bookable types and the class filter */
+function legSeats(r: SeatCheckResult | undefined, date: string, good: AvailabilityType[], clsFilter: string) {
+  if (!r?.ok || !r.data) return [];
+  return calendars(r.data)
+    .filter((c) => !clsFilter || c.cls === clsFilter)
+    .flatMap((c) => c.days.filter((d) => d.date === date && good.includes(d.type)).map((d) => ({ cls: c.cls, label: short(d.status, d.type), type: d.type })));
+}
+
+function Connections({ state, retry, cls, quota, good, clsFilter }: { state: ReturnType<typeof useApi<PlanConnections>>["state"]; retry: () => void; cls: string; quota: string; good: AvailabilityType[]; clsFilter: string }) {
+  const options: Option[] = state.status === "success" ? state.data.options : [];
+  // Seats for every leg of every option, checked a batch at a time
+  const [checked, setChecked] = useState<Record<string, SeatCheckResult>>({});
+  const checks = useMemo<SeatCheck[]>(() => {
+    const seen = new Set<string>();
+    return options.flatMap((c) => c.legs.map((l) => ({ train: l.trainNumber, from: l.from.code, to: l.to.code, date: l.date, class: cls }))).filter((c) => (seen.has(seatKey(c)) ? false : (seen.add(seatKey(c)), true)));
+  }, [options, cls]);
+  useEffect(() => {
+    if (!checks.length) return;
+    let live = true;
+    setChecked({});
+    (async () => {
+      for (let i = 0; i < checks.length; i += BATCH) {
+        const got = await checkSeats(checks.slice(i, i + BATCH), quota);
+        if (!live) return;
+        setChecked((cur) => ({ ...cur, ...Object.fromEntries(got.map((r) => [r.key, r])) }));
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [checks, quota]);
+
+  const legKey = (l: PlanConnection["legs"][number]) => seatKey({ train: l.trainNumber, from: l.from.code, to: l.to.code, date: l.date, class: cls });
+  const done = checks.length > 0 && checks.every((c) => checked[seatKey(c)]);
+  const withSeats = options.filter((c) => c.legs.every((l) => legSeats(checked[legKey(l)], l.date, good, clsFilter).length > 0));
+
   return (
     <section className="space-y-4">
       <div>
@@ -308,13 +404,20 @@ function Connections({ state, retry, cls, quota }: { state: ReturnType<typeof us
         <div className="grid gap-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-[20px]" />)}</div>
       ) : state.status === "error" ? (
         <ErrorState code={state.code} message={state.message} onRetry={retry} />
-      ) : state.data.options.length === 0 ? (
+      ) : options.length === 0 ? (
         <p className="text-[14px] text-slate-500">No sensible one-change journeys leave that day{state.data.hubs.length ? ` via ${state.data.hubs.map((h) => h.name).join(", ")}` : ""}.</p>
+      ) : !done ? (
+        <>
+          <p className="flex items-center gap-2 text-[13.5px] text-slate-500"><span className="size-4 animate-spin rounded-full border-2 border-signal border-t-transparent" aria-hidden />Checking seats on {options.length} journeys…</p>
+          <div className="grid gap-3">{[0, 1].map((i) => <Skeleton key={i} className="h-32 rounded-[20px]" />)}</div>
+        </>
+      ) : withSeats.length === 0 ? (
+        <p className="text-[14px] text-slate-500">No one-change journey has seats on both trains that day. Try another date or include RAC.</p>
       ) : (
         <>
-          <p className="text-[13.5px] text-slate-500">Checked interchanges: {state.data.hubs.map((h) => `${h.name} (${h.code})`).join(" · ")}. Waits between 1 and 12 hours.</p>
+          <p className="text-[13.5px] text-slate-500">Only journeys with seats on both trains. Interchanges checked: {state.data.hubs.map((h) => `${h.name} (${h.code})`).join(" · ")}. Waits between 1 and 12 hours.</p>
           <ul className="space-y-3">
-            {state.data.options.map((c, i) => <ConnectionCard key={`${c.legs[0].trainNumber}-${c.legs[1].trainNumber}-${i}`} c={c} cls={cls} quota={quota} />)}
+            {withSeats.map((c, i) => <ConnectionCard key={`${c.legs[0].trainNumber}-${c.legs[1].trainNumber}-${i}`} c={c} seatsFor={(l) => legSeats(checked[legKey(l)], l.date, good, clsFilter)} />)}
           </ul>
         </>
       )}
@@ -322,51 +425,32 @@ function Connections({ state, retry, cls, quota }: { state: ReturnType<typeof us
   );
 }
 
-function ConnectionCard({ c, cls, quota }: { c: PlanConnection; cls: string; quota: string }) {
-  const [res, setRes] = useState<SeatCheckResult[] | "loading">();
-  const check = async () => {
-    setRes("loading");
-    setRes(await checkSeats(c.legs.map((l) => ({ train: l.trainNumber, from: l.from.code, to: l.to.code, date: l.date, class: cls })), quota));
-  };
+function ConnectionCard({ c, seatsFor }: { c: PlanConnection; seatsFor: (l: PlanConnection["legs"][number]) => { cls: string; label: string; type: AvailabilityType }[] }) {
   return (
     <li data-reveal className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[var(--shadow-card)] sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-slate-500">
-          Via <strong className="font-semibold text-ink">{c.via.name}</strong> · {fmtDuration(c.totalMinutes)} in all · {fmtDuration(c.waitMinutes)} wait
-        </p>
-        {res === undefined && (
-          <button type="button" onClick={check} className="rounded-full bg-ink px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-signal hover:text-ink">Check seats</button>
-        )}
-      </div>
+      <p className="text-[13px] text-slate-500">
+        Via <strong className="font-semibold text-ink">{c.via.name}</strong> · {fmtDuration(c.totalMinutes)} in all · {fmtDuration(c.waitMinutes)} wait
+      </p>
       <ol className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
-        {c.legs.map((l, i) => {
-          const r = Array.isArray(res) ? res[i] : undefined;
-          const cal = r?.ok && r.data ? calendars(r.data) : [];
-          const onDay = cal.flatMap((x) => x.days.filter((d) => d.date === l.date).map((d) => ({ cls: x.cls, label: short(d.status, d.type), type: d.type })));
-          return (
-            <li key={i} className={cx("rounded-2xl bg-slate-50 p-3.5", i === 1 && "md:col-start-3")}>
-              <div className="flex items-center gap-2">
-                <span className="rounded-md bg-ink px-1.5 py-0.5 font-mono text-[12px] font-bold text-signal">{l.trainNumber}</span>
-                <span className="truncate text-[13.5px] font-semibold text-ink">{l.trainName}</span>
-              </div>
-              <p className="mt-1.5 text-[13px] text-slate-600">
-                <strong className="font-mono text-ink">{l.departure}</strong> {l.from.code} → <strong className="font-mono text-ink">{l.arrival}</strong> {l.to.code}
-                <span className="ml-1 text-slate-400">· {day(l.date)}</span>
-              </p>
-              {res === "loading" && <Skeleton className="mt-2 h-6 w-2/3" />}
-              {r && !r.ok && <p className="mt-2 text-[12px] text-slate-400">{r.error}</p>}
-              {onDay.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {onDay.map((s) => (
-                    <span key={s.cls} className={cx("rounded-md px-1.5 py-0.5 font-mono text-[11px] font-bold ring-1 ring-inset", GOOD.includes(s.type) ? "bg-brand-50 text-brand-800 ring-brand-200" : "bg-amber-50 text-amber-900 ring-amber-200")}>
-                      {s.cls} · {s.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </li>
-          );
-        })}
+        {c.legs.map((l, i) => (
+          <li key={i} className={cx("rounded-2xl bg-slate-50 p-3.5", i === 1 && "md:col-start-3")}>
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-ink px-1.5 py-0.5 font-mono text-[12px] font-bold text-signal">{l.trainNumber}</span>
+              <span className="truncate text-[13.5px] font-semibold text-ink">{l.trainName}</span>
+            </div>
+            <p className="mt-1.5 text-[13px] text-slate-600">
+              <strong className="font-mono text-ink">{l.departure}</strong> {l.from.code} → <strong className="font-mono text-ink">{l.arrival}</strong> {l.to.code}
+              <span className="ml-1 text-slate-400">· {day(l.date)}</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {seatsFor(l).map((s) => (
+                <span key={s.cls} className={cx("rounded-md px-1.5 py-0.5 font-mono text-[11px] font-bold ring-1 ring-inset", s.type === "AVAILABLE" ? "bg-brand-50 text-brand-800 ring-brand-200" : "bg-sky-50 text-sky-800 ring-sky-200")}>
+                  {s.cls} · {s.label}
+                </span>
+              ))}
+            </div>
+          </li>
+        ))}
         <li className="hidden text-center md:col-start-2 md:row-start-1 md:block" aria-hidden>
           <span className="inline-flex flex-col items-center gap-1 font-mono text-[11px] text-slate-400">
             <span className="rounded-full bg-signal-soft px-2 py-0.5 font-semibold text-amber-800">{c.via.code}</span>

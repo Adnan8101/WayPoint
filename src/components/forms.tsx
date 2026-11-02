@@ -341,7 +341,7 @@ export function PlannerForm({ initial }: { initial?: Record<string, string | und
       <Autocomplete id="pl-from" label="From" value={from} onChange={setFrom} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.from} className="lg:col-span-2" />
       <Autocomplete id="pl-to" label="To" value={to} onChange={setTo} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.to} className="lg:col-span-2" />
       <DateField id="pl-date" label="Travel date" value={date} onChange={setDate} min={todayIST()} max={todayIST(120)} error={errors.date} className="lg:col-span-2" />
-      <SelectField id="pl-flex" label="Flexible by" value={flex} onChange={setFlex} options={[{ value: "0", label: "Exact date" }, { value: "1", label: "± 1 day" }, { value: "2", label: "± 2 days" }, { value: "3", label: "± 3 days" }, { value: "5", label: "± 5 days" }]} />
+      <SelectField id="pl-flex" label="Flexible by" value={flex} onChange={setFlex} options={[{ value: "0", label: "Exact date" }, { value: "1", label: "± 1 day" }, { value: "2", label: "± 2 days" }, { value: "3", label: "± 3 days" }, { value: "5", label: "± 5 days" }, { value: "7", label: "± 7 days" }]} />
       <SelectField id="pl-class" label="Class" value={cls} onChange={setCls} options={SEAT_CLASS_OPTIONS} />
       <SelectField id="pl-quota" label="Quota" value={quota} onChange={setQuota} options={QUOTA_OPTIONS} />
       <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-3 lg:mt-[26px]"><SearchIcon width={16} height={16} /> Plan my journey</Button>
