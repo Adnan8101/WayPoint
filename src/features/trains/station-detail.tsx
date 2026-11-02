@@ -14,6 +14,8 @@ import { ApiResult } from "@/components/api-result";
 import { Card, SelectField, ShareButton, Tabs, TimeTag, inputClass } from "@/components/ui";
 import { LocalClock } from "@/components/local-clock";
 import { DateField } from "@/components/date-field";
+import { GetThere } from "@/features/places/get-there";
+import { NearbyPlaces } from "@/features/places/nearby-places";
 
 const RouteMap = dynamic(() => import("@/components/route-map"), { ssr: false, loading: () => <Skeleton className="h-56 w-full" /> });
 
@@ -42,7 +44,7 @@ export function StationDetail({ code, station }: { code: string; station: Statio
                 <>
                   <div><dt className="text-slate-500">Name</dt><dd className="font-medium">{station.name}</dd></div>
                   <div><dt className="text-slate-500">State</dt><dd className="font-medium">{station.state ?? "—"}</dd></div>
-                  {hasSpot && <div className="col-span-2"><dt className="text-slate-500">Approximate location</dt><dd className="font-medium tabular-nums">{station.lat!.toFixed(3)}, {station.lon!.toFixed(3)}</dd></div>}
+                  {hasSpot && <div className="col-span-2"><dt className="text-slate-500">{station.exact ? "Location" : "Approximate location"}</dt><dd className="font-medium tabular-nums">{station.lat!.toFixed(3)}, {station.lon!.toFixed(3)}</dd></div>}
                 </>
               )}
               <div className="col-span-2"><dt className="text-slate-500">Platforms</dt><dd className="text-slate-700">Platform numbers appear on individual trains below when the provider reports them.</dd></div>
@@ -75,6 +77,14 @@ export function StationDetail({ code, station }: { code: string; station: Statio
         </ApiResult>
       </Section>
       <Timetable code={code} />
+      <Section className="mt-16">
+        <GetThere destination={hasSpot ? { label: station!.name, lat: station!.lat, lon: station!.lon } : { label: station?.name ?? code, address: `${station?.name ?? code} railway station${station?.state ? `, ${station.state}` : ""}` }} />
+      </Section>
+      {hasSpot && (
+        <Section className="mt-16">
+          <NearbyPlaces lat={station!.lat!} lon={station!.lon!} title={`Around ${station!.name}`} />
+        </Section>
+      )}
     </>
   );
 }

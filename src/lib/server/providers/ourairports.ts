@@ -4,11 +4,12 @@ import { ApiError } from "../errors";
 import { cached } from "../cache";
 import { fetchJson } from "../http";
 import { num, str } from "../pick";
+import { timeZoneAt } from "../google/maps";
 
 // Airport reference data from OurAirports (https://ourairports.com/data/),
 // a public dataset refreshed nightly. The server downloads it, keeps airports
-// with an IATA code, and refreshes daily. Time zones come from Open-Meteo by
-// coordinates, since the dataset doesn't carry them.
+// with an IATA code, and refreshes daily. Time zones come from Google's Time Zone
+// API by coordinates, since the dataset doesn't carry them.
 
 export const airportSource = "OurAirports";
 const CSV_URL = process.env.OURAIRPORTS_CSV_URL || "https://davidmegginson.github.io/ourairports-data/airports.csv";
@@ -142,6 +143,9 @@ export async function searchAirports(query: string, limit = 8): Promise<Airport[
 /** IANA time zone at the airport's coordinates */
 export async function airportTimeZone(a: Airport): Promise<string | undefined> {
   const { value } = await cached(`tz:${a.iata}`, 30 * 24 * 60 * 60_000, async () => {
+    // Google's Time Zone API, with Open-Meteo as a keyless fallback
+    const google = await timeZoneAt(a.lat, a.lon).catch(() => undefined);
+    if (google) return google;
     const raw = await fetchJson(`https://api.open-meteo.com/v1/forecast?latitude=${a.lat}&longitude=${a.lon}&timezone=auto&forecast_days=1`);
     return str(raw, "timezone") ?? (num(raw, "utc_offset_seconds") === 0 ? "UTC" : undefined);
   });

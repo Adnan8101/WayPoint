@@ -13,6 +13,8 @@ import { ApiResult } from "@/components/api-result";
 import { Card, ShareButton, Tabs, TimeTag } from "@/components/ui";
 import { FlightStatusPill } from "./flight-parts";
 import { LocalClock } from "@/components/local-clock";
+import { GetThere } from "@/features/places/get-there";
+import { NearbyPlaces } from "@/features/places/nearby-places";
 
 const RouteMap = dynamic(() => import("@/components/route-map"), { ssr: false, loading: () => <Skeleton className="h-56 w-full" /> });
 
@@ -66,6 +68,16 @@ export function AirportDetail({ code, airport }: { code: string; airport: Airpor
           )}
         </ApiResult>
       </Section>
+      {airport && (
+        <>
+          <Section className="mt-16">
+            <GetThere destination={{ label: airport.name, lat: airport.lat, lon: airport.lon }} title="Get to the airport" />
+          </Section>
+          <Section className="mt-16">
+            <NearbyPlaces lat={airport.lat} lon={airport.lon} title={`Around ${airport.city || airport.iata}`} />
+          </Section>
+        </>
+      )}
     </>
   );
 }

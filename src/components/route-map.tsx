@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import "leaflet/dist/leaflet.css";
+import { useEffect, useRef, useState } from "react";
+import { MAP_STYLES, loadGoogleMaps, type GoogleNS } from "@/lib/client/google-maps";
 
 export interface MapPoint {
   lat: number;
@@ -10,13 +10,18 @@ export interface MapPoint {
   kind: "origin" | "destination" | "stop" | "current" | "aircraft";
 }
 
-const COLORS: Record<MapPoint["kind"], string> = {
-  origin: "#191712",
-  destination: "#191712",
-  stop: "#776f61",
-  current: "#cf5a24",
-  aircraft: "#c0461a",
+const INK = "#0b0d10";
+const SIGNAL = "#ffc21a";
+const FILL: Record<MapPoint["kind"], string> = {
+  origin: INK,
+  destination: "#ffffff",
+  stop: "#a59c8c",
+  current: SIGNAL,
+  aircraft: SIGNAL,
 };
+
+/** Plane glyph pointing up (north) at rotation 0, centred on 12,12 */
+const PLANE_PATH = "M12 2c.8 0 1.4.7 1.4 1.5V9l7.6 4.5v2l-7.6-2.3V18l2.2 1.6V21L12 20l-3.6 1v-1.4L10.6 18v-4.8L3 15.5v-2L10.6 9V3.5C10.6 2.7 11.2 2 12 2z";
 
 /** Points along the great circle between two coordinates (for flight routes). */
 export function greatCircle(a: [number, number], b: [number, number], n = 64): [number, number][] {
@@ -38,55 +43,108 @@ export function greatCircle(a: [number, number], b: [number, number], n = 64): [
   return pts;
 }
 
+/** Google map with route lines and labelled markers */
 export default function RouteMap({
   points, path, passedPath, heightClass = "h-80", headingDeg,
 }: { points: MapPoint[]; path: [number, number][]; passedPath?: [number, number][]; heightClass?: string; headingDeg?: number }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    let map: import("leaflet").Map | undefined;
     let cancelled = false;
+    const drawn: GoogleNS[] = [];
     (async () => {
-      const L = (await import("leaflet")).default;
+      let g: GoogleNS;
+      try {
+        g = await loadGoogleMaps();
+      } catch {
+        if (!cancelled) setFailed(true);
+        return;
+      }
+      const [{ Map, Polyline }, { Marker }, { SymbolPath, LatLngBounds, Point }] = await Promise.all([
+        g.maps.importLibrary("maps"),
+        g.maps.importLibrary("marker"),
+        g.maps.importLibrary("core"),
+      ]);
       if (cancelled || !ref.current) return;
-      map = L.map(ref.current, { scrollWheelZoom: false, worldCopyJump: true, attributionControl: true });
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(map);
 
-      if (path.length > 1) L.polyline(path, { color: "#191712", weight: 2, opacity: 0.45, dashArray: passedPath ? "6 6" : undefined }).addTo(map);
-      if (passedPath && passedPath.length > 1) L.polyline(passedPath, { color: "#c0461a", weight: 3 }).addTo(map);
+      const map = new Map(ref.current, {
+        styles: MAP_STYLES,
+        disableDefaultUI: true,
+        zoomControl: true,
+        fullscreenControl: true,
+        gestureHandling: "cooperative",
+        clickableIcons: false,
+        backgroundColor: "#f2efe8",
+      });
+      const ll = ([lat, lng]: [number, number]) => ({ lat, lng });
+
+      if (path.length > 1) {
+        // Dashed when part of it is already travelled, solid otherwise
+        drawn.push(
+          new Polyline({
+            map,
+            path: path.map(ll),
+            strokeColor: INK,
+            strokeOpacity: passedPath ? 0 : 0.75,
+            strokeWeight: 3,
+            geodesic: true,
+            icons: passedPath ? [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 0.55, strokeColor: INK, scale: 3 }, offset: "0", repeat: "14px" }] : undefined,
+          }),
+        );
+      }
+      if (passedPath && passedPath.length > 1) {
+        drawn.push(new Polyline({ map, path: passedPath.map(ll), strokeColor: SIGNAL, strokeOpacity: 1, strokeWeight: 5, geodesic: true }));
+      }
 
       for (const p of points) {
-        if (p.kind === "aircraft") {
-          const icon = L.divIcon({
-            className: "",
-            html: `<div style="transform:rotate(${(headingDeg ?? 0) - 45}deg);font-size:22px;line-height:22px;color:${COLORS.aircraft};text-shadow:0 0 3px #fff">✈</div>`,
-            iconSize: [22, 22],
-            iconAnchor: [11, 11],
-          });
-          L.marker([p.lat, p.lon], { icon, title: p.label }).addTo(map).bindTooltip(p.label);
-        } else {
-          L.circleMarker([p.lat, p.lon], {
-            radius: p.kind === "stop" ? 4 : 7,
-            color: "#fff",
-            weight: 2,
-            fillColor: COLORS[p.kind],
-            fillOpacity: 1,
-          })
-            .addTo(map)
-            .bindTooltip(p.label, { permanent: p.kind === "origin" || p.kind === "destination" || p.kind === "current", direction: "top" });
-        }
+        const labelled = p.kind === "origin" || p.kind === "destination" || p.kind === "current";
+        const icon =
+          p.kind === "aircraft"
+            ? { path: PLANE_PATH, fillColor: SIGNAL, fillOpacity: 1, strokeColor: INK, strokeWeight: 1.5, scale: 1.4, anchor: new Point(12, 12), rotation: headingDeg ?? 0 }
+            : {
+                path: SymbolPath.CIRCLE,
+                fillColor: FILL[p.kind],
+                fillOpacity: 1,
+                strokeColor: p.kind === "destination" ? INK : "#ffffff",
+                strokeWeight: p.kind === "stop" ? 1.5 : 2.5,
+                scale: p.kind === "stop" ? 4 : 8,
+                labelOrigin: new Point(0, -2.6),
+              };
+        drawn.push(
+          new Marker({
+            map,
+            position: { lat: p.lat, lng: p.lon },
+            title: p.label,
+            icon,
+            zIndex: p.kind === "stop" ? 1 : 10,
+            label: labelled ? { text: p.label, color: INK, fontSize: "12px", fontWeight: "700", fontFamily: "var(--font-code), monospace" } : undefined,
+          }),
+        );
       }
+
       const all = [...path, ...points.map((p) => [p.lat, p.lon] as [number, number])];
-      if (all.length) map.fitBounds(L.latLngBounds(all), { padding: [30, 30] });
+      if (all.length === 1) {
+        map.setCenter(ll(all[0]));
+        map.setZoom(14);
+      } else if (all.length) {
+        const bounds = new LatLngBounds();
+        all.forEach((pt) => bounds.extend(ll(pt)));
+        map.fitBounds(bounds, 40);
+      }
     })();
     return () => {
       cancelled = true;
-      map?.remove();
+      drawn.forEach((o) => o.setMap?.(null));
     };
   }, [points, path, passedPath, headingDeg]);
 
-  return <div ref={ref} className={`${heightClass} w-full overflow-hidden border border-slate-300 bg-slate-100 grayscale-[35%]`} role="img" aria-label="Route map" />;
+  if (failed) {
+    return (
+      <div className={`${heightClass} grid w-full place-items-center rounded-[var(--radius-card)] border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500`}>
+        The map couldn&apos;t load. Check your connection, or that the Maps key allows this site.
+      </div>
+    );
+  }
+  return <div ref={ref} className={`${heightClass} w-full overflow-hidden rounded-[var(--radius-card)] border border-slate-200 bg-paper`} role="img" aria-label="Route map" />;
 }

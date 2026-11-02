@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Place } from "@/lib/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { WeatherSuggestion } from "@/lib/types";
 import { getJson } from "@/lib/client/use-api";
 import { Autocomplete, type Suggestion } from "@/components/autocomplete";
 import { Card } from "@/components/ui";
@@ -29,6 +29,7 @@ export function TimezoneTool() {
     }
   }, []);
   const [query, setQuery] = useState("");
+  const session = useRef(typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()));
   const [zone, setZone] = useState<string>();
   const [now, setNow] = useState<Date | null>(null);
   // The visitor's own zone, read from the browser once mounted
@@ -44,10 +45,14 @@ export function TimezoneTool() {
   // Places from the live geocoder (each carries its zone), plus matching zone names
   const suggest = async (q: string): Promise<Suggestion[]> => {
     const s = q.toLowerCase().replace(/\s+/g, "_");
-    const places = q.trim().length >= 2 ? ((await getJson<Place[]>(`/api/weather/places?${new URLSearchParams({ q: q.trim() })}`)) ?? []) : [];
-    const cityHits = places
-      .filter((p) => p.timeZone)
-      .map((p) => ({ value: p.timeZone!, primary: [p.name, p.region].filter(Boolean).join(", "), secondary: p.timeZone, badge: p.countryCode ?? "—" }));
+    const places = q.trim().length >= 2 ? ((await getJson<WeatherSuggestion[]>(`/api/weather/places?${new URLSearchParams({ q: q.trim(), session: session.current })}`)) ?? []) : [];
+    // Google suggestions carry a place ID; the zone is looked up when one is picked
+    const cityHits = places.map((p) => ({
+      value: p.place?.timeZone ?? (p.placeId ? `pid:${p.placeId}` : ""),
+      primary: p.name,
+      secondary: p.secondary || p.place?.timeZone,
+      badge: p.place?.countryCode,
+    })).filter((x) => x.value);
     const zoneHits = zones.filter((z) => z.toLowerCase().includes(s)).slice(0, 8).map((z) => ({ value: z, primary: z.split("/").pop()!.replace(/_/g, " "), secondary: z }));
     const seen = new Set<string>();
     return [...cityHits, ...zoneHits].filter((x) => (seen.has(x.primary + x.value) ? false : (seen.add(x.primary + x.value), true))).slice(0, 8);
@@ -59,7 +64,13 @@ export function TimezoneTool() {
 
   return (
     <div className="space-y-4">
-      <Autocomplete id="tz-q" label="Destination city or time zone" value={query} onChange={setQuery} suggest={suggest} onSelect={(s) => setZone(s.value)} placeholder="Search a city or time zone" />
+      <Autocomplete id="tz-q" label="Destination city or time zone" value={query} onChange={setQuery} suggest={suggest} onSelect={async (s) => {
+        if (!s.value.startsWith("pid:")) return setZone(s.value);
+        setTimeout(() => setQuery(s.primary));
+        const r = await getJson<{ timeZone: string }>(`/api/geo/zone?pid=${encodeURIComponent(s.value.slice(4))}`);
+        if (r?.timeZone) setZone(r.timeZone);
+        session.current = crypto.randomUUID();
+      }} placeholder="Search a city or time zone" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="p-5">
           <p className="label">Destination{zone ? ` · ${zone}` : ""}</p>

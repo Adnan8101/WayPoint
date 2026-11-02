@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import type { Place, WeatherReport } from "@/lib/types";
+import type { AirQuality, ApiMeta, Place, WeatherReport, WeatherSuggestion } from "@/lib/types";
 import { getJson, useApi } from "@/lib/client/use-api";
 import { cx, fmtDate } from "@/lib/format";
 import { ApiResult } from "@/components/api-result";
@@ -28,7 +28,9 @@ const describe = (c: number) => WMO[c] ?? "Conditions unavailable";
 const RECENT_KEY = "waypoint:weather:recent";
 const RECENT_MAX = 6;
 
-type Query = { kind: "place"; place: Place } | { kind: "city"; city: string };
+type Query = { kind: "place"; place: Place } | { kind: "pid"; placeId: string; name: string } | { kind: "city"; city: string };
+
+const newSession = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 function readRecent(): Place[] {
   try {
@@ -58,6 +60,7 @@ const placeLabel = (p: Place) => [p.name, p.region && p.region !== p.name ? p.re
 
 function toUrl(q: Query): string {
   if (q.kind === "city") return `/api/weather?${new URLSearchParams({ city: q.city, utz: userTz() })}`;
+  if (q.kind === "pid") return `/api/weather?${new URLSearchParams({ pid: q.placeId, name: q.name })}`;
   const p = q.place;
   const s = new URLSearchParams({ lat: String(p.lat), lon: String(p.lon), name: p.name });
   if (p.district) s.set("district", p.district);
@@ -71,18 +74,24 @@ export function WeatherTool() {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState<Query | null>(null);
   const [error, setError] = useState<string>();
-  // Suggestions are shown as labels; keep the places behind them to search by exact coordinates
-  const known = useRef(new Map<string, Place>());
+  // Suggestions are shown as labels; keep what's behind each one to look it up exactly
+  const known = useRef(new Map<string, WeatherSuggestion>());
+  // One Google autocomplete session per search, renewed after each pick
+  const session = useRef(newSession());
   const req = useMemo(() => (query ? { url: toUrl(query) } : null), [query]);
   const { state, refresh } = useApi<WeatherReport>(req);
 
   const [recent, setRecent] = useState<Place[]>([]);
 
-  // Reopen the last place looked up on this device
+  // A place passed in the link (e.g. from Ask) wins; otherwise reopen the last place looked up on this device
   useEffect(() => {
     const list = readRecent();
     setRecent(list);
-    if (list[0]) {
+    const wanted = new URLSearchParams(window.location.search).get("wx")?.trim();
+    if (wanted && wanted.length >= 2) {
+      setQuery({ kind: "city", city: wanted.slice(0, 60) });
+      setInput(wanted.slice(0, 60));
+    } else if (list[0]) {
       setQuery({ kind: "place", place: list[0] });
       setInput(placeLabel(list[0]));
     }
@@ -111,16 +120,20 @@ export function WeatherTool() {
   };
 
   const suggest = useCallback(async (q: string): Promise<Suggestion[]> => {
-    const places = (await getJson<Place[]>(`/api/weather/places?${new URLSearchParams({ q, utz: userTz() })}`)) ?? [];
-    return places.map((p) => {
-      const label = placeLabel(p);
-      known.current.set(label, p);
-      return { value: label, primary: p.name, secondary: [p.district, p.region, p.country].filter((x, i, a) => x && a.indexOf(x) === i && x !== p.name).join(", "), badge: p.countryCode ?? "—" };
+    const list = (await getJson<WeatherSuggestion[]>(`/api/weather/places?${new URLSearchParams({ q, utz: userTz(), session: session.current })}`)) ?? [];
+    return list.map((sug) => {
+      const label = sug.secondary ? `${sug.name}, ${sug.secondary}` : sug.name;
+      known.current.set(label, sug);
+      return { value: label, primary: sug.name, secondary: sug.secondary || undefined, badge: sug.place?.countryCode };
     });
   }, []);
 
+  const fromSuggestion = (sug: WeatherSuggestion): Query =>
+    sug.place ? { kind: "place", place: sug.place } : { kind: "pid", placeId: sug.placeId!, name: sug.name };
+
   const run = (q: Query) => {
     setError(undefined);
+    session.current = newSession();
     if (query && toUrl(query) === toUrl(q)) refresh();
     else setQuery(q);
   };
@@ -129,8 +142,8 @@ export function WeatherTool() {
     e.preventDefault();
     const text = input.trim();
     if (text.length < 2) return setError("Enter a city, town or area.");
-    const place = known.current.get(text);
-    run(place ? { kind: "place", place } : { kind: "city", city: text });
+    const sug = known.current.get(text);
+    run(sug ? fromSuggestion(sug) : { kind: "city", city: text });
   };
 
   return (
@@ -144,8 +157,8 @@ export function WeatherTool() {
           suggest={suggest}
           minChars={2}
           onSelect={(s) => {
-            const place = known.current.get(s.value);
-            if (place) run({ kind: "place", place });
+            const sug = known.current.get(s.value);
+            if (sug) run(fromSuggestion(sug));
           }}
           placeholder="Search any city, town or area"
           hint="Pick a suggestion for the exact area"
@@ -179,7 +192,7 @@ export function WeatherTool() {
   );
 }
 
-function Report({ w, meta, refreshing, refresh }: { w: WeatherReport; meta: import("@/lib/types").ApiMeta; refreshing: boolean; refresh: () => void }) {
+function Report({ w, meta, refreshing, refresh }: { w: WeatherReport; meta: ApiMeta; refreshing: boolean; refresh: () => void }) {
   const c = w.current;
   const label = c.description ? c.description[0].toUpperCase() + c.description.slice(1) : describe(c.code);
   const lo = Math.min(...w.daily.map((d) => d.minC));
@@ -201,6 +214,8 @@ function Report({ w, meta, refreshing, refresh }: { w: WeatherReport; meta: impo
     ["Pressure", c.pressureHpa !== undefined ? `${c.pressureHpa} hPa` : "—"],
     ["Sunrise", c.sunrise ?? "—"],
     ["Sunset", c.sunset ?? "—"],
+    ...(c.uvIndex !== undefined ? [["UV index", `${c.uvIndex}${c.uvIndex >= 8 ? " · very high" : c.uvIndex >= 6 ? " · high" : c.uvIndex >= 3 ? " · moderate" : " · low"}`] as [string, string]] : []),
+    ...(c.precipProb !== undefined ? [["Rain chance", `${c.precipProb}%`] as [string, string]] : []),
   ];
 
   return (
@@ -283,7 +298,44 @@ function Report({ w, meta, refreshing, refresh }: { w: WeatherReport; meta: impo
           })}
         </ul>
       </div>
+      <AirQualityPanel lat={w.location.lat} lon={w.location.lon} />
       <Freshness meta={meta} onRefresh={refresh} refreshing={refreshing} staleAfterMs={60 * 60_000} />
+    </div>
+  );
+}
+
+/** Current air quality from Google, using the country's own index where available */
+function AirQualityPanel({ lat, lon }: { lat: number; lon: number }) {
+  const req = useMemo(() => ({ url: `/api/weather/air?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}` }), [lat, lon]);
+  const { state } = useApi<AirQuality>(req);
+  if (state.status !== "success") return null;
+  const a = state.data;
+  const main = a.pollutants.filter((p) => ["pm25", "pm10", "o3", "no2"].includes(p.code));
+  return (
+    <div className="animate-fade-up grid gap-4 rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-card)] sm:grid-cols-[auto_1fr] sm:items-center sm:p-6">
+      <div className="flex items-center gap-4">
+        <span className="grid size-20 place-items-center rounded-full text-ink ring-4 ring-white" style={{ background: a.color, boxShadow: `0 10px 24px -10px ${a.color}` }}>
+          <span className="font-display text-[28px] font-bold leading-none">{Math.round(a.aqi)}</span>
+        </span>
+        <div>
+          <p className="label">{a.indexName}</p>
+          <p className="font-display mt-1 text-[20px] font-bold text-ink">{a.category}</p>
+          {a.dominant && <p className="text-[12.5px] text-slate-500">Main pollutant: {a.dominant.toUpperCase()}</p>}
+        </div>
+      </div>
+      <div className="space-y-3">
+        {main.length > 0 && (
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {main.map((p) => (
+              <div key={p.code} className="rounded-xl bg-slate-50 px-3 py-2">
+                <dt className="label !text-[10px]">{p.name}</dt>
+                <dd className="font-mono text-[14px] font-semibold text-ink">{Math.round(p.value)} <span className="text-[11px] font-normal text-slate-400">{p.units}</span></dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {a.advice && <p className="text-[13.5px] leading-relaxed text-slate-600">{a.advice}</p>}
+      </div>
     </div>
   );
 }

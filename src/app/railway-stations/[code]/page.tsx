@@ -5,18 +5,24 @@ import { ErrorState } from "@/components/result-states";
 import { cached } from "@/lib/server/cache";
 import { getStation } from "@/lib/server/providers/irctcdev";
 import { findPlaces } from "@/lib/server/providers/geocode";
+import { searchText } from "@/lib/server/google/places";
 import type { Station } from "@/lib/types";
 import { normalizeStationCode } from "@/lib/validation";
 import { StationDetail } from "@/features/trains/station-detail";
 
 type Props = { params: Promise<{ code: string }> };
 
-/** Station record from irctc.dev, with an approximate map point geocoded from its name */
+/** Station record from irctc.dev, placed on the map via Google Places (exact) or the geocoder (approximate) */
 async function loadStation(code: string): Promise<Station | null> {
   try {
     const { value: s } = await cached(`station:${code}`, 30 * 24 * 60 * 60_000, () => getStation(code));
-    const spot = await cached(`stgeo:${code}`, 30 * 24 * 60 * 60_000, async () => (await findPlaces([s.name, s.state].filter(Boolean).join(", "), 1))[0] ?? null).catch(() => null);
-    return { ...s, lat: spot?.value?.lat, lon: spot?.value?.lon };
+    const spot = await cached(`stgeo2:${code}`, 30 * 24 * 60 * 60_000, async () => {
+      const station = await searchText(`${s.name} railway station ${s.state ?? ""}`.trim(), { includedType: "train_station", limit: 1 }).catch(() => []);
+      if (station[0]?.location) return { lat: station[0].location.lat, lon: station[0].location.lng, exact: true };
+      const area = (await findPlaces([s.name, s.state].filter(Boolean).join(", "), 1))[0];
+      return area ? { lat: area.lat, lon: area.lon, exact: false } : null;
+    }).catch(() => null);
+    return { ...s, lat: spot?.value?.lat, lon: spot?.value?.lon, exact: spot?.value?.exact };
   } catch {
     return null;
   }

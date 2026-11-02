@@ -138,12 +138,12 @@ export async function photoUri(name: string, maxWidth: number): Promise<string> 
 
 // ---------- Routes ----------
 
-type Waypoint = { latLng: LatLng } | { placeId: string };
+export type Waypoint = { latLng: LatLng } | { placeId: string } | { address: string };
 
 const waypoint = (w: Waypoint) =>
-  "placeId" in w ? { placeId: w.placeId } : { location: { latLng: { latitude: w.latLng.lat, longitude: w.latLng.lng } } };
+  "placeId" in w ? { placeId: w.placeId } : "address" in w ? { address: w.address } : { location: { latLng: { latitude: w.latLng.lat, longitude: w.latLng.lng } } };
 
-export async function computeRoute(origin: Waypoint, destination: Waypoint, mode: TravelMode): Promise<RouteResult> {
+export async function computeRoute(origin: Waypoint, destination: Waypoint, mode: TravelMode, arriveBy?: string): Promise<RouteResult> {
   const body: Record<string, unknown> = {
     origin: waypoint(origin),
     destination: waypoint(destination),
@@ -151,7 +151,9 @@ export async function computeRoute(origin: Waypoint, destination: Waypoint, mode
     languageCode: "en",
     units: "METRIC",
   };
-  if (mode === "DRIVE") body.routingPreference = "TRAFFIC_AWARE";
+  if (mode === "DRIVE" || mode === "TWO_WHEELER") body.routingPreference = "TRAFFIC_AWARE";
+  // Public transport can plan backwards from when you need to be there
+  if (mode === "TRANSIT" && arriveBy && Date.parse(arriveBy) > Date.now()) body.arrivalTime = arriveBy;
   const raw = await googleFetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
     method: "POST",
     body,

@@ -54,7 +54,7 @@ export interface PlaceSuggestion {
   types: string[];
 }
 
-export type TravelMode = "DRIVE" | "WALK" | "BICYCLE" | "TRANSIT";
+export type TravelMode = "DRIVE" | "TWO_WHEELER" | "WALK" | "BICYCLE" | "TRANSIT";
 
 export interface RouteResult {
   mode: TravelMode;
@@ -71,6 +71,7 @@ export const NEARBY_CATEGORIES = {
   hotels: { label: "Hotels", types: ["lodging", "hotel", "resort_hotel"] },
   restaurants: { label: "Restaurants", types: ["restaurant", "cafe"] },
   transport: { label: "Transport", types: ["transit_station", "train_station", "bus_station", "subway_station", "taxi_stand", "car_rental"] },
+  essentials: { label: "ATMs & pharmacies", types: ["atm", "pharmacy", "hospital"] },
 } as const;
 
 export type NearbyCategory = keyof typeof NEARBY_CATEGORIES;

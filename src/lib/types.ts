@@ -322,6 +322,35 @@ export interface StationTimetable {
   trains: StationTimetableTrain[];
 }
 
+export interface AirQuality {
+  /** The national index where Google has one (e.g. India's CPCB AQI), otherwise the Universal AQI */
+  aqi: number;
+  indexName: string;
+  category: string;
+  /** CSS colour Google assigns to this level */
+  color: string;
+  dominant?: string;
+  pollutants: { code: string; name: string; value: number; units: string }[];
+  advice?: string;
+  at: string;
+}
+
+/** A weather/place search suggestion */
+export interface WeatherSuggestion {
+  /** Google place ID, resolved to coordinates when picked */
+  placeId?: string;
+  name: string;
+  secondary?: string;
+  /** Present when the fallback geocoder answered: coordinates are already known */
+  place?: Place;
+}
+
+/** What the natural-language search understood, ready to navigate to */
+export interface AssistantIntent {
+  href: string;
+  summary: string;
+}
+
 /** Airport reference record (OurAirports), with a time zone once looked up */
 export interface Airport {
   iata: string;
@@ -345,6 +374,8 @@ export interface Station {
   state?: string;
   lat?: number;
   lon?: number;
+  /** True when the point is the station itself, false when it's the surrounding area */
+  exact?: boolean;
 }
 
 export interface StationSuggestion {
@@ -430,6 +461,9 @@ export interface WeatherReport {
     pressureHpa?: number;
     gustKmh?: number;
     cloudPct?: number;
+    uvIndex?: number;
+    /** Chance of rain right now, 0–100 */
+    precipProb?: number;
   };
   /** Next ~24 hours in 3-hour steps; `time` is local "YYYY-MM-DDTHH:mm" */
   hourly: { time: string; tempC: number; code: number; isDay: boolean; precipProb?: number }[];

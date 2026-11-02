@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
+import { GetThere } from "@/features/places/get-there";
 import type { Flight } from "@/lib/types";
 import { useApi } from "@/lib/client/use-api";
 import { addRecent } from "@/lib/client/recent";
@@ -71,8 +72,19 @@ export function FlightStatusView() {
   );
 }
 
+/** Departure time to plan around, only while the flight hasn't left */
+function plannedDeparture(f: Flight): string | undefined {
+  if (!["Scheduled", "Delayed", "Boarding", "Unknown"].includes(f.status)) return undefined;
+  const v = f.departure.estimated?.value ?? f.departure.scheduled?.value;
+  // Needs a full timestamp, not a bare wall-clock time
+  return v && !Number.isNaN(Date.parse(v)) && Date.parse(v) > Date.now() ? v : undefined;
+}
+
 function FlightResult({ flight, date }: { flight: Flight; date: string }) {
+  const departAt = plannedDeparture(flight);
+  const dep = flight.departure.airport;
   return (
+    <>
     <Card className="p-5 sm:p-6">
       <FlightHeader flight={flight} />
       {flight.status === "Cancelled" && (
@@ -92,5 +104,15 @@ function FlightResult({ flight, date }: { flight: Flight; date: string }) {
         {flight.arrival.airport.iata && <Link href={`/airports/${flight.arrival.airport.iata}`} className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-[var(--shadow-card)] transition-all hover:-translate-y-px hover:border-ink hover:text-ink">{flight.arrival.airport.iata} airport info</Link>}
       </div>
     </Card>
+    {departAt && (
+      <GetThere
+        title="When to leave for the airport"
+        destination={dep.lat !== undefined && dep.lon !== undefined ? { label: dep.name, lat: dep.lat, lon: dep.lon } : { label: dep.name, address: `${dep.name}${dep.city ? `, ${dep.city}` : ""}` }}
+        departAt={departAt}
+        buffers={[60, 90, 120, 180]}
+        defaultBuffer={120}
+      />
+    )}
+    </>
   );
 }

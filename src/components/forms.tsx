@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Autocomplete, suggestAirports, suggestStations, suggestTrains } from "./autocomplete";
 import { Button, Field, SelectField } from "./ui";
 import { DateField } from "./date-field";
+import { ScanTicket } from "@/features/assistant/scan-ticket";
 import { SearchIcon, SeatIcon, SwapIcon } from "./icons";
 import { isValidDate, normalizeAirportCode, normalizeFlightNumber, normalizePnr, normalizeStationCode } from "@/lib/validation";
 import { todayIST, todayLocal } from "@/lib/dates";
@@ -161,6 +162,9 @@ export function PnrForm({ initial, onSubmitPnr, busy: externalBusy }: { initial?
         hint={`${digits.length} of 10 digits entered. You'll find your PNR at the top left of your ticket.`}
       />
       <Button type="submit" loading={busy || externalBusy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> Check PNR status</Button>
+      <div className="sm:col-span-2">
+        <ScanTicket onPnr={(p) => { setPnr(p); setError(undefined); }} />
+      </div>
     </form>
   );
 }

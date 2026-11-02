@@ -8,6 +8,7 @@ import { addRecent } from "@/lib/client/recent";
 import { normalizePnr } from "@/lib/validation";
 import { fmtDate } from "@/lib/format";
 import { PnrForm } from "@/components/forms";
+import { ExplainPnr } from "@/features/assistant/explain-pnr";
 import { SearchPanel, Section } from "@/components/page-header";
 import { EmptyState, Freshness, ResultSkeleton } from "@/components/result-states";
 import { ApiResult } from "@/components/api-result";
@@ -100,6 +101,8 @@ export function PnrView() {
                   </Link>
                 )}
               </Card>
+
+              <ExplainPnr d={d} />
 
               <Card className="overflow-hidden">
                 <div className="border-b border-slate-200 px-5 py-4">

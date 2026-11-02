@@ -95,7 +95,7 @@ export function Footer() {
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex flex-wrap justify-between gap-2 border-t border-white/[0.08] py-6 font-mono text-[11.5px] text-white/35">
             <span>© {new Date().getFullYear()} {SITE.name}</span>
-            <span>Data · Aviationstack · irctc.dev · OpenWeatherMap · Maps © OpenStreetMap</span>
+            <span>Data · irctc.dev · Aviationstack · OurAirports · Google Maps Platform · Gemini</span>
           </div>
         </div>
         <p

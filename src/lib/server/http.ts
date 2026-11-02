@@ -3,6 +3,8 @@ import { ApiError } from "./errors";
 
 interface FetchOptions {
   headers?: Record<string, string>;
+  /** JSON body; sends a POST when present */
+  body?: unknown;
   timeoutMs?: number;
   /** Called for non-2xx responses before generic handling; may throw a more specific ApiError */
   onStatus?: (status: number, body: string) => void;
@@ -15,7 +17,9 @@ export async function fetchJson<T = unknown>(url: string, opts: FetchOptions = {
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { Accept: "application/json", ...opts.headers },
+      method: opts.body !== undefined ? "POST" : "GET",
+      headers: { Accept: "application/json", ...(opts.body !== undefined ? { "Content-Type": "application/json" } : {}), ...opts.headers },
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       signal: controller.signal,
       cache: "no-store",
     });

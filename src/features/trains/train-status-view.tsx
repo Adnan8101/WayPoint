@@ -15,6 +15,7 @@ import { ApiResult } from "@/components/api-result";
 import { Card, ShareButton, TimeTag } from "@/components/ui";
 import { RecentList } from "@/components/recent-list";
 import { ProgressBar, TrainTitle } from "./train-parts";
+import { BoardingPlanner } from "./boarding-planner";
 
 export function TrainStatusView() {
   const params = useSearchParams();
@@ -141,6 +142,7 @@ function RunningResult({ d, meta, refreshing, refresh }: { d: TrainRunningStatus
         </div>
       </Card>
       <TimeLegend />
+      <BoardingPlanner d={d} />
     </div>
   );
 }
