@@ -44,7 +44,7 @@ export function BetweenView() {
           skeleton={<ResultSkeleton rows={6} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState art="between" title="Find trains between any two stations">Search by station name or code. Results show timings, duration, running days and available classes.</EmptyState>
+              <EmptyState title="Find trains between any two stations">Search by station name or code. Results show timings, duration, running days and available classes.</EmptyState>
               <RecentList kinds={["between"]} />
             </div>
           }
@@ -180,7 +180,7 @@ function Results({ result, meta, refreshing, refresh, from, to, date }: { result
                   <Link href={`/train-schedule?train=${t.trainNumber}`} className="text-slate-600 hover:text-ink hover:underline">Schedule</Link>
                   <Link href={`/train-status?train=${t.trainNumber}`} className="text-slate-600 hover:text-ink hover:underline">Live status</Link>
                   <Link
-                    href={`/seat-availability?${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date })}`}
+                    href={`/seats?tab=availability&${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date })}`}
                     className="rounded-full bg-ink px-3.5 py-1.5 text-white transition-colors hover:bg-signal hover:text-ink"
                   >
                     Seats & fare

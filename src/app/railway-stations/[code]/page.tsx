@@ -46,7 +46,7 @@ export default async function Page({ params }: Props) {
   if (!code) {
     return (
       <>
-        <PageHeader art="station" eyebrow="Railway stations" title="Invalid station code" />
+        <PageHeader eyebrow="Railway stations" title="Invalid station code" />
         <Section className="relative -mt-20">
           <ErrorState code="INVALID_STATION" message={`"${raw}" is not a valid station code. Station codes are 1–5 letters.`} />
           <p className="mt-4 text-sm"><Link href="/railway-stations" className="font-medium text-ink underline decoration-signal decoration-2 underline-offset-4 transition-colors hover:decoration-ink">← Search stations</Link></p>
@@ -57,7 +57,7 @@ export default async function Page({ params }: Props) {
   const s = await loadStation(code);
   return (
     <>
-      <PageHeader art="station" eyebrow="Railway station" title={s ? s.name : `Station ${code}`} description={s ? s.state || "Indian Railways" : "We couldn't load details for this code, but live train information may still be available."}>
+      <PageHeader eyebrow="Railway station" title={s ? s.name : `Station ${code}`} description={s ? s.state || "Indian Railways" : "We couldn't load details for this code, but live train information may still be available."}>
         <div className="mt-4"><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[13px] text-slate-200">Code {code}</span></div>
       </PageHeader>
       <StationDetail code={code} station={s ?? null} />

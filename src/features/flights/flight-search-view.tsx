@@ -56,7 +56,7 @@ export function FlightSearchView() {
           skeleton={<ResultSkeleton rows={6} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState art="search" title="Discover flights between airports">
+              <EmptyState title="Discover flights between airports">
                 Search by city or airport code to see direct flights on a date with times, duration and aircraft. WayPoint is an information service: book directly with the airline.
               </EmptyState>
               <RecentList kinds={["flight-search"]} />

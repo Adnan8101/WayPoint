@@ -14,8 +14,6 @@ import { ApiResult } from "@/components/api-result";
 import { Card, SelectField, ShareButton, Tabs, TimeTag, inputClass } from "@/components/ui";
 import { LocalClock } from "@/components/local-clock";
 import { DateField } from "@/components/date-field";
-import { GetThere } from "@/features/places/get-there";
-import { NearbyPlaces } from "@/features/places/nearby-places";
 
 const RouteMap = dynamic(() => import("@/components/route-map"), { ssr: false, loading: () => <Skeleton className="h-56 w-full" /> });
 
@@ -77,14 +75,6 @@ export function StationDetail({ code, station }: { code: string; station: Statio
         </ApiResult>
       </Section>
       <Timetable code={code} />
-      <Section className="mt-16">
-        <GetThere destination={hasSpot ? { label: station!.name, lat: station!.lat, lon: station!.lon } : { label: station?.name ?? code, address: `${station?.name ?? code} railway station${station?.state ? `, ${station.state}` : ""}` }} />
-      </Section>
-      {hasSpot && (
-        <Section className="mt-16">
-          <NearbyPlaces lat={station!.lat!} lon={station!.lon!} title={`Around ${station!.name}`} />
-        </Section>
-      )}
     </>
   );
 }

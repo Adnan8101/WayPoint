@@ -4,8 +4,6 @@ import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { RevealObserver } from "@/components/motion";
-import { AskPalette } from "@/features/assistant/ask-palette";
-import { Translator } from "@/features/i18n/translator";
 import { SITE } from "@/lib/site";
 
 const heading = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
@@ -42,8 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main" className="flex-1">{children}</main>
         <Footer />
         <RevealObserver />
-        <AskPalette />
-        <Translator />
       </body>
     </html>
   );

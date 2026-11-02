@@ -63,7 +63,7 @@ export function SeatsView() {
   };
 
   useEffect(() => {
-    if (ready) addRecent({ kind: "seats", label: `${q.train ? `${q.train} · ` : ""}${fromLabel} → ${toLabel}`, href: `/seat-availability?${params.toString()}` });
+    if (ready) addRecent({ kind: "seats", label: `${q.train ? `${q.train} · ` : ""}${fromLabel} → ${toLabel}`, href: `/seats?${params.toString()}` });
   }, [ready, params]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -74,7 +74,7 @@ export function SeatsView() {
       <Section>
         {!ready ? (
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <EmptyState art="seats" title="Will you get a berth?">
+            <EmptyState title="Will you get a berth?">
               Search by train name or number, or just give From and To to see every train on the route. Pick &ldquo;Any class&rdquo; to compare every class&apos;s fare and seats at once.
             </EmptyState>
             <RecentList kinds={["seats"]} />
@@ -380,7 +380,7 @@ function RouteView({ from, to, date, cls, quota, onDate }: { from: string; to: s
 /** Nothing leaves that day: offer the next date that has trains */
 export function NoTrains({ r, date, onDate }: { r: TrainsBetweenResult; date: string; onDate: (d: string) => void }) {
   return (
-    <EmptyState art="between" title={`No trains on ${day(date)}`}>
+    <EmptyState title={`No trains on ${day(date)}`}>
       <p>No train leaves {r.from.label} for {r.to.label} that day.</p>
       {r.nextDate ? (
         <button
@@ -399,7 +399,7 @@ export function NoTrains({ r, date, onDate }: { r: TrainsBetweenResult; date: st
 
 function RouteTrain({ t, date, cls, quota }: { t: TrainBetween; date: string; cls: string; quota: string }) {
   const [open, setOpen] = useState(false);
-  const full = `/seat-availability?${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date, class: cls, quota })}`;
+  const full = `/seats?tab=availability&${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date, class: cls, quota })}`;
   return (
     <li data-reveal className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[var(--shadow-card)] sm:p-5">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">

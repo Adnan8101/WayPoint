@@ -6,34 +6,24 @@ import { LiveTicker } from "@/features/home/live-ticker";
 import { RecentList } from "@/components/recent-list";
 import { RouteArcs, Rider } from "@/components/page-header";
 import { SpotlightLink } from "@/components/motion";
-import { Scene, type SceneKind } from "@/components/illustrations";
-import { ArrowRightIcon, BanIcon, BerthIcon, BuildingIcon, ClockIcon, MapIcon, SeatIcon, PlaneIcon, RouteIcon, SearchIcon, TrainIcon } from "@/components/icons";
+import { ArrowRightIcon, BanIcon, BuildingIcon, ClockIcon, SeatIcon, SearchIcon, PlaneIcon, TrainIcon } from "@/components/icons";
 import { SITE } from "@/lib/site";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
 const MORE: { title: string; line: string; href: string; icon: Icon }[] = [
-  { title: "Journey planner", line: "Trains with seats on your date, nearby dates or one change", href: "/planner", icon: RouteIcon },
-  { title: "Seats & fare", line: "Availability across the coming days, every class's fare", href: "/seat-availability", icon: SeatIcon },
-  { title: "Vacant berths", line: "Free berths after the chart, coach by coach", href: "/chart-vacancy", icon: BerthIcon },
+  { title: "Seats", line: "Availability, fares, journey planner and vacant berths", href: "/seats", icon: SeatIcon },
   { title: "Trains between stations", line: "Every train on a route, with fares", href: "/trains-between-stations", icon: SearchIcon },
+  { title: "Train schedule", line: "Timetable, stops and route map", href: "/train-schedule", icon: ClockIcon },
   { title: "Cancelled trains", line: "Is yours on today's list?", href: "/cancelled-trains", icon: BanIcon },
-  { title: "Train schedule", line: "Full station-wise timetable", href: "/train-schedule", icon: ClockIcon },
+  { title: "Railway stations", line: "Live arrivals and departures", href: "/railway-stations", icon: BuildingIcon },
   { title: "Airport boards", line: "Live arrivals and departures", href: "/airports", icon: BuildingIcon },
-  { title: "Flight tracker", line: "Route and position on a map", href: "/flight-tracker", icon: MapIcon },
 ];
 
 const FACTS = [
   { k: "PNR", v: "Berth and chart status" },
   { k: "Train no.", v: "Live position and delay" },
   { k: "Flight no.", v: "Gate, terminal and belt" },
-];
-
-const LEGS: { title: string; tag: string; href: string; art: SceneKind; dark?: boolean }[] = [
-  { title: "Railway stations", tag: "Concourse", href: "/railway-stations", art: "station", dark: true },
-  { title: "Train routes", tag: "On the line", href: "/train-route", art: "route" },
-  { title: "Airport boards", tag: "Terminal", href: "/airports", art: "airport", dark: true },
-  { title: "Weather & time", tag: "Arrival", href: "/travel-information", art: "travel" },
 ];
 
 const d = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
@@ -174,7 +164,7 @@ export default function Home() {
 
       {/* ───────── 02 More tools ───────── */}
       <section className="mx-auto mt-28 max-w-7xl px-4 sm:px-6">
-        <SectionHead index="02" title="Everything else" sub="Timetables, boards, maps and the small stuff that saves a trip." />
+        <SectionHead index="02" title="More tools" sub="Timetables, seats, boards and stations." />
         <ul className="grid border-t border-slate-300/70 lg:grid-cols-2 lg:gap-x-10">
           {MORE.map((m, i) => (
             <li key={m.href} data-reveal style={d(i * 60)} className="border-b border-slate-300/70">
@@ -192,37 +182,6 @@ export default function Home() {
                   <ArrowRightIcon width={16} height={16} />
                 </span>
               </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ───────── Every leg ───────── */}
-      <section className="mt-28 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <SectionHead index="—" title="Every leg of the trip" sub="From the station concourse to the gate, and the weather on the other side." />
-        </div>
-        <ul className="no-scrollbar mx-auto flex max-w-7xl snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:px-6 lg:grid lg:grid-cols-4 lg:overflow-visible">
-          {LEGS.map((l, i) => (
-            <li key={l.href} data-reveal style={d(i * 90)} className="w-[78%] shrink-0 snap-start sm:w-[46%] lg:w-auto">
-              <SpotlightLink
-                href={l.href}
-                className={`group flex h-full flex-col overflow-hidden rounded-[26px] transition-[transform,box-shadow] duration-500 hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)] ${l.dark ? "grain bg-ink text-white" : "border border-slate-200/80 bg-white text-ink shadow-[var(--shadow-card)]"}`}
-              >
-                <div className={`relative aspect-[4/3] p-5 ${l.dark ? "" : "dot-field"}`}>
-                  {l.dark && <div className="grid-lines absolute inset-0" aria-hidden />}
-                  <Scene kind={l.art} theme={l.dark ? "dark" : "light"} className="relative h-full w-full transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:scale-[1.04]" />
-                </div>
-                <div className={`flex flex-1 items-end justify-between gap-3 border-t p-5 ${l.dark ? "border-white/[0.08]" : "border-slate-200/80"}`}>
-                  <div>
-                    <p className={`label ${l.dark ? "!text-signal" : ""}`}>{l.tag}</p>
-                    <h3 className="font-display mt-2 text-[22px] font-bold">{l.title}</h3>
-                  </div>
-                  <span className={`grid size-10 shrink-0 place-items-center rounded-full transition-all duration-500 group-hover:-rotate-45 ${l.dark ? "bg-signal text-ink" : "bg-ink text-signal"}`}>
-                    <ArrowRightIcon width={16} height={16} />
-                  </span>
-                </div>
-              </SpotlightLink>
             </li>
           ))}
         </ul>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Scene, type SceneKind } from "./illustrations";
 
 const ARC_A = "M-20 230C120 60 330 40 620 120";
 const ARC_B = "M40 260C180 140 380 150 620 30";
@@ -37,18 +36,13 @@ export function Rider({ path, dur, begin = "0s", color = "#fff", r = 3 }: { path
 }
 
 /** Carbon page masthead. The SearchPanel that follows overlaps its bottom edge. */
-export function PageHeader({ eyebrow, title, description, art, children }: { eyebrow?: string; title: string; description?: string; art?: SceneKind; children?: ReactNode }) {
+export function PageHeader({ eyebrow, title, description, children }: { eyebrow?: string; title: string; description?: string; children?: ReactNode }) {
   return (
     <section className="grain relative overflow-hidden bg-ink text-white">
       <div className="glow-signal absolute inset-0" aria-hidden />
       <div className="grid-lines absolute inset-0" aria-hidden />
-      <RouteArcs className={`pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[62%] md:block ${art ? "opacity-40" : ""}`} />
-      {art && (
-        <div className="animate-fade-up pointer-events-none absolute bottom-20 right-[max(1rem,calc((100vw-80rem)/2+1.5rem))] top-6 hidden w-[340px] items-center lg:flex xl:w-[420px]" style={{ animationDelay: "200ms" }}>
-          <Scene kind={art} className="w-full" />
-        </div>
-      )}
-      <div className={`relative mx-auto max-w-7xl px-4 pb-32 pt-10 sm:px-6 sm:pt-14 ${art ? "lg:pr-[380px] xl:pr-[460px]" : ""}`}>
+      <RouteArcs className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[62%] md:block" />
+      <div className="relative mx-auto max-w-7xl px-4 pb-32 pt-10 sm:px-6 sm:pt-14">
         <nav aria-label="Breadcrumb" className="animate-fade-up flex items-center gap-2 font-mono text-[11.5px] uppercase tracking-[0.12em] text-white/45">
           <Link href="/" className="transition-colors hover:text-signal">Home</Link>
           {eyebrow && (

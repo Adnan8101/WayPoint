@@ -127,7 +127,7 @@ export function PlannerView() {
   }, [checks, quota]);
 
   useEffect(() => {
-    if (direct.state.status === "success") addRecent({ kind: "planner", label: `${direct.state.data.from.label} → ${direct.state.data.to.label} · ${fmtDate(q.date, { day: "numeric", month: "short" })}`, href: `/planner?${params.toString()}` });
+    if (direct.state.status === "success") addRecent({ kind: "planner", label: `${direct.state.data.from.label} → ${direct.state.data.to.label} · ${fmtDate(q.date, { day: "numeric", month: "short" })}`, href: `/seats?${params.toString()}` });
   }, [direct.state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = trains.map((t, i) => ({ t, v: verdict(seats[seatKey(checks[i])], q.date, winFrom, winTo) }));
@@ -152,7 +152,7 @@ export function PlannerView() {
       <Section>
         {!ready ? (
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <EmptyState art="route" title="Plan a trip that actually has seats">
+            <EmptyState title="Plan a trip that actually has seats">
               Tell us where and when. We check every direct train for seats on your date, find the nearest dates with seats if it&apos;s full, and suggest journeys with one change of train when that works better.
             </EmptyState>
             <RecentList kinds={["planner"]} />
@@ -254,7 +254,7 @@ function Group({ title, note, rows, cls, quota }: { title: string; note?: string
 }
 
 function TrainCard({ t, v, cls, quota }: { t: TrainBetween; v: Verdict; cls: string; quota: string }) {
-  const href = `/seat-availability?${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date: v.date ?? "", class: cls, quota })}`;
+  const href = `/seats?tab=availability&${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date: v.date ?? "", class: cls, quota })}`;
   const tone = v.state === "today" ? "border-l-brand-500" : v.state === "nearby" ? "border-l-signal" : "border-l-slate-300";
   return (
     <li data-reveal className={cx("rounded-[20px] border border-l-4 border-slate-200/80 bg-white p-4 shadow-[var(--shadow-card)] sm:p-5", tone)}>

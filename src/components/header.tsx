@@ -5,26 +5,20 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { NAV, SITE } from "@/lib/site";
 import { cx } from "@/lib/format";
-import { ArrowRightIcon, BanIcon, BerthIcon, BuildingIcon, ClockIcon, SeatIcon, CloseIcon, MapIcon, MenuIcon, PlaneIcon, RouteIcon, SearchIcon, TicketIcon, TrainIcon } from "./icons";
+import { ArrowRightIcon, BanIcon, BuildingIcon, ClockIcon, SeatIcon, CloseIcon, MenuIcon, PlaneIcon, SearchIcon, TicketIcon, TrainIcon } from "./icons";
 import { LocalClock } from "./local-clock";
 import { useScrolled } from "./motion";
-import { openAsk } from "@/features/assistant/ask-palette";
-import { LanguagePicker } from "@/features/i18n/language-picker";
 
 const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   "/flight-status": PlaneIcon,
-  "/flight-tracker": MapIcon,
   "/flight-search": SearchIcon,
   "/airports": BuildingIcon,
   "/pnr-status": TicketIcon,
   "/train-status": TrainIcon,
   "/trains-between-stations": SearchIcon,
   "/train-schedule": ClockIcon,
-  "/train-route": RouteIcon,
   "/railway-stations": BuildingIcon,
-  "/seat-availability": SeatIcon,
-  "/planner": RouteIcon,
-  "/chart-vacancy": BerthIcon,
+  "/seats": SeatIcon,
   "/cancelled-trains": BanIcon,
 };
 
@@ -120,16 +114,6 @@ export function Header() {
             </span>
             <span className="font-medium text-white"><LocalClock withZone /></span>
           </div>
-          <LanguagePicker className="hidden sm:flex" />
-          <button
-            type="button"
-            onClick={openAsk}
-            aria-label="Ask in your own words (Ctrl or Command + K)"
-            className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1.5 pl-3 pr-1.5 text-[13px] font-medium text-white/70 transition-colors hover:border-white/25 hover:text-white md:flex"
-          >
-            Ask
-            <kbd className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10.5px] text-white/60">⌘K</kbd>
-          </button>
           <Link
             href="/pnr-status"
             className="group hidden items-center gap-1.5 rounded-full bg-signal py-2 pl-4 pr-3 text-[14px] font-semibold text-ink shadow-[inset_0_-2px_0_rgb(0_0_0/0.14)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[inset_0_-2px_0_rgb(0_0_0/0.14),0_8px_20px_-6px_rgb(255_194_26/0.5)] md:flex"
@@ -151,10 +135,6 @@ export function Header() {
 
       {open && (
         <nav aria-label="Mobile" className={cx("fixed inset-x-0 bottom-0 overflow-y-auto bg-ink px-4 pb-10 md:hidden", scrolled ? "top-[60px]" : "top-[72px]")}>
-          <div className="flex items-center justify-between gap-3 pt-5 sm:hidden">
-            <span className="label !text-white/40">Language</span>
-            <LanguagePicker />
-          </div>
           {NAV.map((n, gi) =>
             "items" in n ? (
               <div key={n.label} className="animate-fade-up pt-6" style={{ animationDelay: `${gi * 60}ms` }}>

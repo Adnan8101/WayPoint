@@ -5,7 +5,6 @@ import { useState, type FormEvent } from "react";
 import { Autocomplete, suggestAirports, suggestStations, suggestStationsOrPlace, suggestTrains } from "./autocomplete";
 import { Button, Field, SelectField } from "./ui";
 import { DateField } from "./date-field";
-import { ScanTicket } from "@/features/assistant/scan-ticket";
 import { SearchIcon, SeatIcon, SwapIcon } from "./icons";
 import { isValidDate, normalizeAirportCode, normalizeFlightNumber, normalizePnr, normalizeStationCode } from "@/lib/validation";
 import { todayIST, todayLocal } from "@/lib/dates";
@@ -74,7 +73,7 @@ export function FlightStatusForm({ target = "/flight-status", initial }: { targe
         onChange={(e) => setNumber(e.target.value)} error={error} hint="Airline code + number" maxLength={10}
       />
       <DateField id="flight-date" label="Travel date" value={date} onChange={setDate} min={todayLocal(-1)} max={todayLocal(1)} hint="Live data: yesterday to tomorrow" />
-      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-1 lg:mt-[26px]"><SearchIcon width={16} height={16} /> {target === "/flight-tracker" ? "Track flight" : "Check flight status"}</Button>
+      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-1 lg:mt-[26px]"><SearchIcon width={16} height={16} /> Check flight status</Button>
     </form>
   );
 }
@@ -169,9 +168,6 @@ export function PnrForm({ initial, onSubmitPnr, busy: externalBusy }: { initial?
         hint={`${digits.length} of 10 digits entered. You'll find your PNR at the top left of your ticket.`}
       />
       <Button type="submit" loading={busy || externalBusy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> Check PNR status</Button>
-      <div className="sm:col-span-2">
-        <ScanTicket onPnr={(p) => { setPnr(p); setError(undefined); }} />
-      </div>
     </form>
   );
 }
@@ -231,7 +227,7 @@ export function TrainsBetweenForm({ initial }: { initial?: { from?: string; to?:
   );
 }
 
-export function TrainNumberForm({ target, initial, cta }: { target: "/train-schedule" | "/train-route"; initial?: string; cta: string }) {
+export function TrainNumberForm({ target, initial, cta }: { target: "/train-schedule"; initial?: string; cta: string }) {
   const [train, setTrain] = useState(initial ?? "");
   const [error, setError] = useState<string>();
   const { busy, go } = useBusyNav();
@@ -299,7 +295,7 @@ export function SeatsForm({ initial }: { initial?: Record<string, string | undef
     if (Object.keys(errs).length) return;
     const q = new URLSearchParams({ from: f!, to: t!, date, class: cls, quota });
     if (n) q.set("train", n);
-    go(`/seat-availability?${q}`);
+    go(`/seats?tab=availability&${q}`);
   };
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -338,7 +334,7 @@ export function PlannerForm({ initial }: { initial?: Record<string, string | und
     if (!isValidDate(date)) errs.date = "Choose a valid date.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    go(`/planner?${new URLSearchParams({ from: f!, to: t!, date, flex, class: cls, quota })}`);
+    go(`/seats?tab=planner&${new URLSearchParams({ from: f!, to: t!, date, flex, class: cls, quota })}`);
   };
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -369,7 +365,7 @@ export function VacancyForm({ initial }: { initial?: Record<string, string | und
     if (!b) errs.boarding = "Choose the station where you board.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    go(`/chart-vacancy?${new URLSearchParams({ train: n!, boarding: b!, date, class: cls })}`);
+    go(`/seats?tab=vacancy&${new URLSearchParams({ train: n!, boarding: b!, date, class: cls })}`);
   };
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1.2fr_1fr_0.9fr_auto]">

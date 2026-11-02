@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader art="pnr" eyebrow="Indian Railways" title="PNR Status" description="Check confirmation, RAC or waiting-list status, coach and berth for every passenger." />
+      <PageHeader eyebrow="Indian Railways" title="PNR Status" description="Check confirmation, RAC or waiting-list status, coach and berth for every passenger." />
       <PnrView />
     </>
   );

@@ -8,13 +8,9 @@ const COLUMNS = [
     title: "Travel",
     links: [
       { label: "Flight Status", href: "/flight-status" },
-      { label: "Flight Tracker", href: "/flight-tracker" },
       { label: "Train Status", href: "/train-status" },
       { label: "PNR Status", href: "/pnr-status" },
-      { label: "Journey Planner", href: "/planner" },
-      { label: "Seats & Fare", href: "/seat-availability" },
-      { label: "Vacant Berths", href: "/chart-vacancy" },
-      { label: "Cancelled Trains", href: "/cancelled-trains" },
+      { label: "Seats", href: "/seats" },
       { label: "Train Search", href: "/trains-between-stations" },
       { label: "Train Schedule", href: "/train-schedule" },
     ],
@@ -24,9 +20,8 @@ const COLUMNS = [
     links: [
       { label: "Airports", href: "/airports" },
       { label: "Railway Stations", href: "/railway-stations" },
-      { label: "Train Route", href: "/train-route" },
       { label: "Flight Search", href: "/flight-search" },
-      { label: "Travel Information", href: "/travel-information" },
+      { label: "Cancelled Trains", href: "/cancelled-trains" },
     ],
   },
 ];

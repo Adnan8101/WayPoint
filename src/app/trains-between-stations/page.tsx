@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader art="between" eyebrow="Indian Railways" title="Trains Between Stations" description="Compare trains by timing, duration, running days and class." />
+      <PageHeader eyebrow="Indian Railways" title="Trains Between Stations" description="Compare trains by timing, duration, running days and class." />
       <Suspense fallback={<div className="relative mx-auto -mt-20 max-w-7xl px-4 sm:px-6"><ResultSkeleton rows={1} /></div>}>
         <BetweenView />
       </Suspense>

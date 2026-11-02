@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader art="flight" eyebrow="Flights" title="Flight Status" description="Live departure and arrival times, terminals, gates and delays for any flight." />
+      <PageHeader eyebrow="Flights" title="Flight Status" description="Live departure and arrival times, terminals, gates and delays for any flight." />
       <Suspense fallback={<div className="relative mx-auto -mt-20 max-w-7xl px-4 sm:px-6"><ResultSkeleton rows={1} /></div>}>
         <FlightStatusView />
       </Suspense>

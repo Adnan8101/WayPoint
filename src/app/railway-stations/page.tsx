@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader art="station" eyebrow="Indian Railways" title="Railway Station Information" description="Live arrivals and departures, platforms and the full-day timetable for any station." />
+      <PageHeader eyebrow="Indian Railways" title="Railway Station Information" description="Live arrivals and departures, platforms and the full-day timetable for any station." />
       <SearchPanel><StationSearchForm /></SearchPanel>
       <Section>
         <RuleHeading sub="Every station in the Indian Railways network is searchable above.">Your stations</RuleHeading>

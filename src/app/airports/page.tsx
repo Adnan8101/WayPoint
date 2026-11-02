@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader art="airport" eyebrow="Flights" title="Airport Information" description="Codes, locations, local time and live arrivals and departures for airports worldwide." />
+      <PageHeader eyebrow="Flights" title="Airport Information" description="Codes, locations, local time and live arrivals and departures for airports worldwide." />
       <SearchPanel><AirportSearchForm /></SearchPanel>
       <Section>
         <RuleHeading sub="Thousands of airports with scheduled service are searchable above.">Your airports</RuleHeading>

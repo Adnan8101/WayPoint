@@ -28,7 +28,7 @@ export default async function Page({ params }: Props) {
   if (!code) {
     return (
       <>
-        <PageHeader art="airport" eyebrow="Airports" title="Invalid airport code" />
+        <PageHeader eyebrow="Airports" title="Invalid airport code" />
         <Section className="relative -mt-20">
           <ErrorState code="INVALID_AIRPORT" message={`"${raw}" is not a valid IATA (3-letter) or ICAO (4-letter) airport code.`} />
           <p className="mt-4 text-sm"><Link href="/airports" className="font-medium text-ink underline decoration-signal decoration-2 underline-offset-4 transition-colors hover:decoration-ink">← Search airports</Link></p>
@@ -39,7 +39,7 @@ export default async function Page({ params }: Props) {
 
   return (
     <>
-      <PageHeader art="airport" eyebrow="Airport" title={a?.name ?? `Airport ${code}`} description={a ? [a.city, a.country].filter(Boolean).join(", ") : "We couldn't load reference details for this code, but live flight boards may still be available."}>
+      <PageHeader eyebrow="Airport" title={a?.name ?? `Airport ${code}`} description={a ? [a.city, a.country].filter(Boolean).join(", ") : "We couldn't load reference details for this code, but live flight boards may still be available."}>
         <div className="mt-4 flex flex-wrap gap-2 text-sm">
           {a && <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[13px] text-slate-200">IATA {a.iata}</span>}
           {a?.icao && <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[13px] text-slate-200">ICAO {a.icao}</span>}

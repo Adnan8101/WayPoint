@@ -5,7 +5,6 @@ import type { ApiMeta, ErrorCode } from "@/lib/types";
 import { cx, fmtDateTime, fmtRelative } from "@/lib/format";
 import { AlertIcon, RefreshIcon, SearchIcon } from "./icons";
 import { Button } from "./ui";
-import { Scene, type SceneKind } from "./illustrations";
 
 const ERROR_TITLES: Record<ErrorCode, string> = {
   INVALID_FLIGHT: "We couldn't find that flight",
@@ -48,7 +47,7 @@ export function ErrorState({ code, message, onRetry }: { code: ErrorCode; messag
   );
 }
 
-export function EmptyState({ title, children, icon, art }: { title: string; children?: React.ReactNode; icon?: React.ReactNode; art?: SceneKind }) {
+export function EmptyState({ title, children, icon }: { title: string; children?: React.ReactNode; icon?: React.ReactNode }) {
   return (
     <div data-reveal className="dot-field relative flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-dashed border-slate-300 bg-white/50 p-6 sm:flex-row sm:items-center sm:gap-8 sm:p-9">
       <div className="flex-1">
@@ -59,7 +58,6 @@ export function EmptyState({ title, children, icon, art }: { title: string; chil
         <h3 className="font-display mt-6 text-[26px] font-bold text-ink">{title}</h3>
         {children && <div className="mt-2 max-w-lg text-[15px] leading-relaxed text-slate-500">{children}</div>}
       </div>
-      {art && <Scene kind={art} theme="light" className="mx-auto mt-8 w-full max-w-[280px] shrink-0 sm:mt-0 sm:w-[240px] md:w-[280px]" />}
     </div>
   );
 }

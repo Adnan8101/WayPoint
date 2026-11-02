@@ -8,7 +8,6 @@ import { addRecent } from "@/lib/client/recent";
 import { normalizePnr } from "@/lib/validation";
 import { fmtDate } from "@/lib/format";
 import { PnrForm } from "@/components/forms";
-import { ExplainPnr } from "@/features/assistant/explain-pnr";
 import { SearchPanel, Section } from "@/components/page-header";
 import { EmptyState, Freshness, ResultSkeleton } from "@/components/result-states";
 import { ApiResult } from "@/components/api-result";
@@ -57,7 +56,7 @@ export function PnrView() {
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
               <div className="space-y-6">
-                <EmptyState art="pnr" title="Check your booking status">Enter the 10-digit PNR from your ticket or booking SMS to see confirmation, RAC or waiting-list status for each passenger.</EmptyState>
+                <EmptyState title="Check your booking status">Enter the 10-digit PNR from your ticket or booking SMS to see confirmation, RAC or waiting-list status for each passenger.</EmptyState>
                 <StatusGuide />
               </div>
               <RecentList kinds={["pnr"]} title="Recent PNRs" />
@@ -90,7 +89,7 @@ export function PnrView() {
                 </div>
                 {d.chartPrepared && d.trainNumber && d.boarding.code && d.passengers.some((p) => p.currentStatusCode !== "CNF" && p.currentStatusCode !== "CAN") && (
                   <Link
-                    href={`/chart-vacancy?${new URLSearchParams({ train: d.trainNumber, boarding: d.boarding.code, date: d.journeyDate })}`}
+                    href={`/seats?${new URLSearchParams({ tab: "vacancy", train: d.trainNumber, boarding: d.boarding.code, date: d.journeyDate })}`}
                     className="group mt-5 flex items-center justify-between gap-4 rounded-2xl bg-ink p-4 text-white transition-transform hover:-translate-y-0.5"
                   >
                     <span>
@@ -101,8 +100,6 @@ export function PnrView() {
                   </Link>
                 )}
               </Card>
-
-              <ExplainPnr d={d} />
 
               <Card className="overflow-hidden">
                 <div className="border-b border-slate-200 px-5 py-4">

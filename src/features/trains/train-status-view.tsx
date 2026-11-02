@@ -15,7 +15,6 @@ import { ApiResult } from "@/components/api-result";
 import { Card, ShareButton, TimeTag } from "@/components/ui";
 import { RecentList } from "@/components/recent-list";
 import { ProgressBar, TrainTitle } from "./train-parts";
-import { BoardingPlanner } from "./boarding-planner";
 
 export function TrainStatusView() {
   const params = useSearchParams();
@@ -42,7 +41,7 @@ export function TrainStatusView() {
           skeleton={<ResultSkeleton rows={8} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState art="train" title="Where is my train?">Enter a train number or name and the date the train started its journey to see its live location and delays.</EmptyState>
+              <EmptyState title="Where is my train?">Enter a train number or name and the date the train started its journey to see its live location and delays.</EmptyState>
               <RecentList kinds={["train"]} />
             </div>
           }
@@ -142,7 +141,6 @@ function RunningResult({ d, meta, refreshing, refresh }: { d: TrainRunningStatus
         </div>
       </Card>
       <TimeLegend />
-      <BoardingPlanner d={d} />
     </div>
   );
 }

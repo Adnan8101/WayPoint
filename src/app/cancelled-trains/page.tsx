@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader art="cancelled" eyebrow="Indian Railways" title="Cancelled Trains" description="Today's full and partial cancellations. Search to see if your train is affected." />
+      <PageHeader eyebrow="Indian Railways" title="Cancelled Trains" description="Today's full and partial cancellations. Search to see if your train is affected." />
       <CancelledView />
     </>
   );

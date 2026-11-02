@@ -26,7 +26,7 @@ export function VacancyView() {
   const { state, refresh } = useApi<ChartVacancy>(req);
 
   useEffect(() => {
-    if (state.status === "success") addRecent({ kind: "vacancy", label: `${q.train} · from ${q.boarding}`, href: `/chart-vacancy?${new URLSearchParams(q)}` });
+    if (state.status === "success") addRecent({ kind: "vacancy", label: `${q.train} · from ${q.boarding}`, href: `/seats?tab=vacancy&${new URLSearchParams(q)}` });
   }, [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -41,7 +41,7 @@ export function VacancyView() {
           skeleton={<ResultSkeleton rows={6} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState art="seats" title="Find a berth after the chart">
+              <EmptyState title="Find a berth after the chart">
                 Once the reservation chart is prepared, unsold and cancelled berths show up here, coach by coach, with the exact stretch each one is free for. Ask the ticket examiner on board for them.
               </EmptyState>
               <RecentList kinds={["vacancy"]} />

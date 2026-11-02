@@ -5,7 +5,6 @@ import { cx } from "@/lib/format";
 import { AirportSearchForm, FlightSearchForm, FlightStatusForm, PnrForm, SeatsForm, TrainNumberForm, TrainStatusForm, TrainsBetweenForm } from "@/components/forms";
 import { PlaneIcon, TrainIcon } from "@/components/icons";
 import { useIndicator } from "@/components/motion";
-import { AskBox } from "@/features/assistant/ask-box";
 
 type Category = "trains" | "flights";
 const TOOLS = {
@@ -19,7 +18,6 @@ const TOOLS = {
   flights: [
     { id: "status", label: "Flight Status" },
     { id: "search", label: "Search Flights" },
-    { id: "tracker", label: "Live Flight Tracker" },
     { id: "airport", label: "Arrivals & Departures" },
   ],
 } as const;
@@ -33,12 +31,6 @@ export function HomeSearch() {
 
   return (
     <div className="relative rounded-[28px] bg-white p-2 text-ink shadow-[0_50px_100px_-30px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.08)]">
-      <div className="px-2 pt-2 sm:px-3">
-        <AskBox />
-        <p className="mt-3 flex items-center gap-3 px-1 font-mono text-[10.5px] uppercase tracking-[0.16em] text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" aria-hidden />or pick a tool<span className="h-px flex-1 bg-slate-200" aria-hidden />
-        </p>
-      </div>
       <div className="flex flex-col gap-3 px-2 pb-1 pt-2 sm:flex-row sm:items-center sm:gap-6 sm:px-3">
         <div ref={catThumb.ref} role="tablist" aria-label="Travel category" className="relative inline-flex self-start rounded-full bg-slate-100 p-1 ring-1 ring-inset ring-slate-200/70">
           {catThumb.box && (
@@ -105,7 +97,6 @@ export function HomeSearch() {
       <div key={`${cat}-${active}`} className="animate-fade-up rounded-[22px] p-4 sm:p-5" role="tabpanel">
         {cat === "flights" && active === "status" && <FlightStatusForm />}
         {cat === "flights" && active === "search" && <FlightSearchForm />}
-        {cat === "flights" && active === "tracker" && <FlightStatusForm target="/flight-tracker" />}
         {cat === "flights" && active === "airport" && <AirportSearchForm />}
         {cat === "trains" && active === "pnr" && <PnrForm />}
         {cat === "trains" && active === "running" && <TrainStatusForm />}

@@ -12,30 +12,28 @@ import { TrainNumberForm } from "@/components/forms";
 import { SearchPanel, Section } from "@/components/page-header";
 import { EmptyState, Freshness, ResultSkeleton, Skeleton } from "@/components/result-states";
 import { ApiResult } from "@/components/api-result";
-import { Card, ShareButton } from "@/components/ui";
+import { Card, ShareButton, Tabs } from "@/components/ui";
 import { RecentList } from "@/components/recent-list";
 import type { MapPoint } from "@/components/route-map";
 import { RunDays, TrainTitle } from "./train-parts";
 
 const RouteMap = dynamic(() => import("@/components/route-map"), { ssr: false, loading: () => <Skeleton className="h-96 w-full" /> });
 
-type Mode = "schedule" | "route";
-
-export function ScheduleView({ mode }: { mode: Mode }) {
+export function ScheduleView() {
   const params = useSearchParams();
   const train = params.get("train") ?? "";
+  const [tab, setTab] = useState<"timetable" | "route">(params.get("view") === "route" ? "route" : "timetable");
   const req = useMemo(() => (train ? { url: `/api/trains/schedule?train=${encodeURIComponent(train)}` } : null), [train]);
   const { state, refresh } = useApi<TrainSchedule>(req);
-  const target = mode === "schedule" ? "/train-schedule" : "/train-route";
 
   useEffect(() => {
-    if (state.status === "success") addRecent({ kind: mode, label: `${state.data.trainNumber} ${state.data.trainName}`.trim(), href: `${target}?train=${train}` });
-  }, [state, train, mode, target]);
+    if (state.status === "success") addRecent({ kind: "schedule", label: `${state.data.trainNumber} ${state.data.trainName}`.trim(), href: `/train-schedule?train=${train}` });
+  }, [state, train]);
 
   return (
     <>
       <SearchPanel>
-        <TrainNumberForm key={train} target={target} initial={train} cta={mode === "schedule" ? "View schedule" : "View route"} />
+        <TrainNumberForm key={train} target="/train-schedule" initial={train} cta="View schedule" />
       </SearchPanel>
       <Section>
         <ApiResult
@@ -44,19 +42,18 @@ export function ScheduleView({ mode }: { mode: Mode }) {
           skeleton={<ResultSkeleton rows={8} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState art={mode === "schedule" ? "schedule" : "route"} title={mode === "schedule" ? "Full station-wise timetable" : "See a train's complete route"}>
-                {mode === "schedule"
-                  ? "Search by train number or name to see every stop with arrival, departure, halt and distance."
-                  : "See every station on the route with distances, halts and, where reliable coordinates exist, a map."}
+              <EmptyState title="Timetable and route">
+                Search by train number or name to see every stop with timings, distances and a route map.
               </EmptyState>
-              <RecentList kinds={["schedule", "route"]} />
+              <RecentList kinds={["schedule"]} />
             </div>
           }
         >
           {(s, meta, refreshing) => (
             <div className="space-y-6">
-              <Summary s={s} meta={meta} refreshing={refreshing} refresh={refresh} mode={mode} />
-              {mode === "schedule" ? <Timetable s={s} /> : <RouteOverview s={s} />}
+              <Summary s={s} meta={meta} refreshing={refreshing} refresh={refresh} />
+              <Tabs label="Schedule view" value={tab} onChange={setTab} tabs={[{ value: "timetable", label: "Timetable" }, { value: "route", label: "Route & map" }]} />
+              {tab === "timetable" ? <Timetable s={s} /> : <RouteOverview s={s} />}
             </div>
           )}
         </ApiResult>
@@ -65,7 +62,7 @@ export function ScheduleView({ mode }: { mode: Mode }) {
   );
 }
 
-function Summary({ s, meta, refreshing, refresh, mode }: { s: TrainSchedule; meta: ApiMeta; refreshing: boolean; refresh: () => void; mode: Mode }) {
+function Summary({ s, meta, refreshing, refresh }: { s: TrainSchedule; meta: ApiMeta; refreshing: boolean; refresh: () => void }) {
   const stops = s.stops.filter((x) => x.isStop).length;
   return (
     <>
@@ -73,7 +70,7 @@ function Summary({ s, meta, refreshing, refresh, mode }: { s: TrainSchedule; met
       <Card className="p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <TrainTitle number={s.trainNumber} name={s.trainName} sub={s.trainType} />
-          <ShareButton title={`${s.trainNumber} ${mode}`} />
+          <ShareButton title={`${s.trainNumber} schedule`} />
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
           <Box label="Source" value={`${s.source.name ?? ""} (${s.source.code})`} />
