@@ -3,8 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { Airport } from "@/lib/data/airports";
-import type { AirportBoard, BoardFlight } from "@/lib/types";
+import type { Airport, AirportBoard, BoardFlight } from "@/lib/types";
 import { useApi } from "@/lib/client/use-api";
 import { addRecent } from "@/lib/client/recent";
 import { cx, fmtDayOf } from "@/lib/format";
@@ -32,23 +31,19 @@ export function AirportDetail({ code, airport }: { code: string; airport: Airpor
       <Section className="relative -mt-20">
         <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
           <Card className="p-5">
-            <h2 className="font-semibold text-slate-900">Airport details</h2>
+            <h2 className="font-semibold text-ink">Airport details</h2>
             {airport ? (
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div><dt className="text-slate-500">IATA code</dt><dd className="font-mono font-semibold">{airport.iata}</dd></div>
-                <div><dt className="text-slate-500">ICAO code</dt><dd className="font-mono font-semibold">{airport.icao}</dd></div>
+                <div><dt className="text-slate-500">ICAO code</dt><dd className="font-mono font-semibold">{airport.icao || "—"}</dd></div>
                 <div><dt className="text-slate-500">City</dt><dd className="font-medium">{airport.city}</dd></div>
                 <div><dt className="text-slate-500">Country</dt><dd className="font-medium">{airport.country}</dd></div>
-                <div><dt className="text-slate-500">Local time</dt><dd className="font-medium"><LocalClock timeZone={airport.timeZone} /></dd></div>
-                <div><dt className="text-slate-500">Time zone</dt><dd className="font-medium">{airport.timeZone}</dd></div>
+                <div><dt className="text-slate-500">Local time</dt><dd className="font-medium">{airport.timeZone ? <LocalClock timeZone={airport.timeZone} /> : "—"}</dd></div>
+                <div><dt className="text-slate-500">Time zone</dt><dd className="font-medium">{airport.timeZone ?? "—"}</dd></div>
                 <div className="col-span-2"><dt className="text-slate-500">Location</dt><dd className="font-medium tabular-nums">{airport.lat.toFixed(4)}, {airport.lon.toFixed(4)}</dd></div>
-                <div className="col-span-2">
-                  <dt className="text-slate-500">Terminals</dt>
-                  <dd className="font-medium">{airport.terminals?.join(", ") ?? <span className="font-normal text-slate-400">Terminal information not available</span>}</dd>
-                </div>
               </dl>
             ) : (
-              <p className="mt-2 text-sm text-slate-600">Detailed reference information for {code} is not in our airport directory yet.</p>
+              <p className="mt-2 text-sm text-slate-600">Reference details for {code} could not be loaded right now.</p>
             )}
             <div className="mt-4"><ShareButton title={`${airport?.name ?? code} arrivals & departures`} /></div>
           </Card>
@@ -57,7 +52,7 @@ export function AirportDetail({ code, airport }: { code: string; airport: Airpor
       </Section>
       <Section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-slate-900">Flight information</h2>
+          <h2 className="font-display text-[26px] font-bold text-ink">Flight information</h2>
           <Tabs label="Flight board" value={tab} onChange={setTab} tabs={[{ value: "departures", label: "Departures" }, { value: "arrivals", label: "Arrivals" }]} />
         </div>
         <ApiResult state={state} onRetry={refresh} skeleton={<ResultSkeleton rows={8} />}>
@@ -101,11 +96,11 @@ function BoardTable({ flights, direction }: { flights: BoardFlight[]; direction:
                   <div className="text-[11px] text-slate-400">{fmtDayOf(f.scheduled?.value)}</div>
                 </td>
                 <td className="px-4 py-3 align-top">
-                  <Link href={`/flight-status?flight=${f.number}&date=${f.scheduled?.value.slice(0, 10) ?? ""}`} className="font-semibold text-brand-700 hover:underline">{f.number}</Link>
+                  <Link href={`/flight-status?flight=${f.number}&date=${f.scheduled?.value.slice(0, 10) ?? ""}`} className="font-semibold text-ink underline decoration-signal decoration-2 underline-offset-4 transition-colors hover:decoration-ink">{f.number}</Link>
                   <div className="max-w-[10rem] truncate text-xs text-slate-500">{f.airline.name}</div>
                 </td>
                 <td className="px-4 py-3 align-top">
-                  <div className="font-medium text-slate-900">{f.otherAirport.city ?? f.otherAirport.name}</div>
+                  <div className="font-medium text-ink">{f.otherAirport.city ?? f.otherAirport.name}</div>
                   <div className="text-xs text-slate-500">{f.otherAirport.iata ?? f.otherAirport.icao}</div>
                 </td>
                 <td className="hidden px-4 py-3 align-top text-slate-700 md:table-cell">{f.terminal ? `T${f.terminal.replace(/^T/i, "")}` : "—"}{f.gate ? ` / ${f.gate}` : ""}</td>

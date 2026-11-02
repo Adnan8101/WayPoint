@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader eyebrow="Flights" title="Flight Search" description="Discover direct flights between airports, with timings, duration and status." />
+      <PageHeader art="search" eyebrow="Flights" title="Flight Search" description="Discover direct flights between airports, with timings, duration and status." />
       <Suspense fallback={<div className="relative mx-auto -mt-20 max-w-7xl px-4 sm:px-6"><ResultSkeleton rows={2} /></div>}>
         <FlightSearchView />
       </Suspense>

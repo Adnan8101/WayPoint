@@ -44,7 +44,7 @@ export function ScheduleView({ mode }: { mode: Mode }) {
           skeleton={<ResultSkeleton rows={8} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState title={mode === "schedule" ? "Full station-wise timetable" : "See a train's complete route"}>
+              <EmptyState art={mode === "schedule" ? "schedule" : "route"} title={mode === "schedule" ? "Full station-wise timetable" : "See a train's complete route"}>
                 {mode === "schedule"
                   ? "Search by train number or name to see every stop with arrival, departure, halt and distance."
                   : "See every station on the route with distances, halts and, where reliable coordinates exist, a map."}
@@ -80,16 +80,16 @@ function Summary({ s, meta, refreshing, refresh, mode }: { s: TrainSchedule; met
           <Box label="Destination" value={`${s.destination.name ?? ""} (${s.destination.code})`} />
           <Box label="Total duration" value={fmtDuration(s.totalDurationMinutes)} />
           <Box label="Total distance" value={s.totalDistanceKm !== undefined ? `${Math.round(s.totalDistanceKm)} km` : "—"} />
-          <div className=" rounded-xl bg-slate-50 p-3.5"><p className="text-xs text-slate-500">Runs on</p><div className="mt-1"><RunDays days={s.runDays} /></div></div>
+          <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4"><p className="label !text-[10px]">Runs on</p><div className="mt-1"><RunDays days={s.runDays} /></div></div>
         </div>
-        <p className="mt-3 text-xs text-slate-500">{stops} scheduled stops · All times are scheduled timetable times (IST). <Link className="font-medium text-brand-700 hover:underline" href={`/train-status?train=${s.trainNumber}`}>Check live running status →</Link></p>
+        <p className="mt-3 text-xs text-slate-500">{stops} scheduled stops · All times are scheduled timetable times (IST). <Link className="font-medium text-ink underline decoration-signal decoration-2 underline-offset-4 transition-colors hover:decoration-ink" href={`/train-status?train=${s.trainNumber}`}>Check live running status →</Link></p>
       </Card>
     </>
   );
 }
 
 function Box({ label, value }: { label: string; value: string }) {
-  return <div className=" rounded-xl bg-slate-50 p-3.5"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 truncate text-sm font-semibold text-slate-900" title={value}>{value}</p></div>;
+  return <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4"><p className="label !text-[10px]">{label}</p><p className="mt-1 truncate text-sm font-semibold text-ink" title={value}>{value}</p></div>;
 }
 
 function Timetable({ s }: { s: TrainSchedule }) {
@@ -98,8 +98,8 @@ function Timetable({ s }: { s: TrainSchedule }) {
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-        <h3 className="text-lg font-semibold text-ink">Station-wise timetable</h3>
-        <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" className="size-4 accent-brand-600" checked={onlyStops} onChange={(e) => setOnlyStops(e.target.checked)} /> Stops only</label>
+        <h3 className="font-display text-[22px] font-bold text-ink">Station-wise timetable</h3>
+        <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" className="size-4 accent-[var(--color-ink)]" checked={onlyStops} onChange={(e) => setOnlyStops(e.target.checked)} /> Stops only</label>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -110,7 +110,7 @@ function Timetable({ s }: { s: TrainSchedule }) {
             {rows.map((x) => (
               <tr key={x.seq} className={cx(!x.isStop && "text-slate-400")}>
                 <td className="px-4 py-2.5 tabular-nums text-slate-500">{x.seq}</td>
-                <td className="px-4 py-2.5"><Link href={`/railway-stations/${x.code}`} className="font-medium text-slate-900 hover:text-brand-700">{x.name}</Link> <span className="font-mono text-xs text-slate-500">{x.code}</span>{x.platform && <span className="ml-1 text-xs text-slate-400">PF {x.platform}</span>}</td>
+                <td className="px-4 py-2.5"><Link href={`/railway-stations/${x.code}`} className="font-medium text-ink hover:underline hover:decoration-signal hover:decoration-2 hover:underline-offset-4">{x.name}</Link> <span className="font-mono text-xs text-slate-500">{x.code}</span>{x.platform && <span className="ml-1 text-xs text-slate-400">PF {x.platform}</span>}</td>
                 <td className="px-4 py-2.5 tabular-nums">{x.arrival ?? <span className="text-slate-400">Starts</span>}</td>
                 <td className="px-4 py-2.5 tabular-nums">{x.departure ?? <span className="text-slate-400">Ends</span>}</td>
                 <td className="px-4 py-2.5 tabular-nums">{x.arrival && x.departure && x.haltMinutes !== undefined ? `${x.haltMinutes} min` : "—"}</td>
@@ -150,7 +150,7 @@ function RouteOverview({ s }: { s: TrainSchedule }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
       <Card className="p-5">
-        <h3 className="text-lg font-semibold text-ink">Route: {stops[0]?.code} → {stops.at(-1)?.code}</h3>
+        <h3 className="font-display text-[22px] font-bold text-ink">Route: {stops[0]?.code} → {stops.at(-1)?.code}</h3>
         <p className="text-sm text-slate-600">{stops.length} stops · {s.totalDistanceKm !== undefined ? `${Math.round(s.totalDistanceKm)} km` : "distance not reported"}{direction ? ` · ${direction} overall` : ""}</p>
         <ol className="relative mt-5">
           {stops.map((x, i) => {
@@ -163,7 +163,7 @@ function RouteOverview({ s }: { s: TrainSchedule }) {
                 <span className={cx("absolute left-0 top-1 size-4 rounded-full border-2", end ? "border-ink bg-ink" : "border-ink bg-white")} aria-hidden />
                 {leg !== undefined && <span className="absolute -top-3 left-6 text-[10px] text-slate-400">+{Math.round(leg)} km</span>}
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-medium text-slate-900">{x.name} <span className="font-mono text-xs text-slate-500">{x.code}</span></p>
+                  <p className="font-medium text-ink">{x.name} <span className="font-mono text-xs text-slate-500">{x.code}</span></p>
                   <p className="text-xs tabular-nums text-slate-600">
                     {x.arrival ?? "—"} → {x.departure ?? "—"}
                   </p>
@@ -188,7 +188,7 @@ function RouteOverview({ s }: { s: TrainSchedule }) {
             </p>
           </>
         ) : (
-          <div className=" border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-600">
+          <div className="rounded-[20px] border border-dashed border-slate-300 bg-white/60 p-6 text-sm text-slate-600">
             A map isn&apos;t shown because reliable coordinates aren&apos;t available for enough stations on this route. The full station list is on the left.
           </div>
         )}

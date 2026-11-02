@@ -56,7 +56,7 @@ export function PnrView() {
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
               <div className="space-y-6">
-                <EmptyState title="Check your booking status">Enter the 10-digit PNR from your ticket or booking SMS to see confirmation, RAC or waiting-list status for each passenger.</EmptyState>
+                <EmptyState art="pnr" title="Check your booking status">Enter the 10-digit PNR from your ticket or booking SMS to see confirmation, RAC or waiting-list status for each passenger.</EmptyState>
                 <StatusGuide />
               </div>
               <RecentList kinds={["pnr"]} title="Recent PNRs" />
@@ -87,11 +87,23 @@ export function PnrView() {
                     <Pill tone="amber">Chart not prepared: status may still change</Pill>
                   )}
                 </div>
+                {d.chartPrepared && d.trainNumber && d.boarding.code && d.passengers.some((p) => p.currentStatusCode !== "CNF" && p.currentStatusCode !== "CAN") && (
+                  <Link
+                    href={`/chart-vacancy?${new URLSearchParams({ train: d.trainNumber, boarding: d.boarding.code, date: d.journeyDate })}`}
+                    className="group mt-5 flex items-center justify-between gap-4 rounded-2xl bg-ink p-4 text-white transition-transform hover:-translate-y-0.5"
+                  >
+                    <span>
+                      <span className="block font-semibold">Still not confirmed?</span>
+                      <span className="block text-[13px] text-white/60">See vacant berths on this train after charting, coach by coach.</span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-signal px-3.5 py-1.5 text-[13px] font-semibold text-ink transition-transform group-hover:translate-x-1">Find berths →</span>
+                  </Link>
+                )}
               </Card>
 
               <Card className="overflow-hidden">
                 <div className="border-b border-slate-200 px-5 py-4">
-                  <h3 className="text-lg font-semibold text-ink">Passengers ({d.passengers.length})</h3>
+                  <h3 className="font-display text-[22px] font-bold text-ink">Passengers ({d.passengers.length})</h3>
                   <p className="text-xs text-slate-500"><strong>Booking status</strong> is what you got when you booked. <strong>Current status</strong> is your status now.</p>
                 </div>
                 {d.passengers.length === 0 ? (
@@ -129,8 +141,8 @@ export function PnrView() {
                 )}
               </Card>
               <div className="flex flex-wrap gap-2 text-sm">
-                {d.trainNumber && <Link href={`/train-status?train=${d.trainNumber}`} className=" rounded-lg bg-ink px-3.5 py-2 font-medium text-white hover:bg-navy-700">Running status of {d.trainNumber} →</Link>}
-                {d.trainNumber && <Link href={`/train-schedule?train=${d.trainNumber}`} className=" rounded-lg border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 hover:border-slate-300">Train schedule</Link>}
+                {d.trainNumber && <Link href={`/train-status?train=${d.trainNumber}`} className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 font-semibold text-white transition-colors hover:bg-signal hover:text-ink">Running status of {d.trainNumber} →</Link>}
+                {d.trainNumber && <Link href={`/train-schedule?train=${d.trainNumber}`} className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-[var(--shadow-card)] transition-all hover:-translate-y-px hover:border-ink hover:text-ink">Train schedule</Link>}
               </div>
               <p className="text-xs text-slate-500">We don&apos;t store PNR results. This information is fetched when you ask for it and shown only to you.</p>
               <StatusGuide />
@@ -149,7 +161,7 @@ function berth(p: PnrStatus["passengers"][number]) {
 
 function Info({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className=" rounded-xl bg-slate-50 p-3.5">
+    <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
       <p className="font-mono text-[22px] font-semibold tracking-tight text-ink">{value || "—"}</p>
       {sub && <p className="truncate text-xs text-slate-500">{sub}</p>}
@@ -160,7 +172,7 @@ function Info({ label, value, sub }: { label: string; value: string; sub?: strin
 function StatusGuide() {
   return (
     <Card className="p-5">
-      <h3 className="text-lg font-semibold text-ink">What the booking status codes mean</h3>
+      <h3 className="font-display text-[22px] font-bold text-ink">What the booking status codes mean</h3>
       <dl className="mt-3 grid gap-2 sm:grid-cols-2">
         {Object.entries(BOOKING_STATUS_INFO).map(([code, info]) => (
           <div key={code} className="flex items-center gap-2 text-sm">

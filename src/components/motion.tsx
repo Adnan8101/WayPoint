@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type ComponentProps, type MouseEvent } from "react";
 import { cx } from "@/lib/format";
 
 /**
@@ -87,6 +88,11 @@ export function trackSpotlight(e: MouseEvent<HTMLElement>) {
   const r = e.currentTarget.getBoundingClientRect();
   e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
   e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+}
+
+/** A Link that carries the `.spotlight` cursor light; usable from server components. */
+export function SpotlightLink({ className, ...props }: ComponentProps<typeof Link>) {
+  return <Link {...props} onMouseMove={trackSpotlight} className={cx("spotlight", className)} />;
 }
 
 /** True once the page has scrolled past `offset` px. */

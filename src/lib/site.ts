@@ -1,5 +1,5 @@
 export const SITE = {
-  name: "Travel Hub",
+  name: "WayPoint",
   tagline: "Flight status, train running status and PNR in one place",
   url: process.env.SITE_URL ?? "http://localhost:3000",
 };
@@ -26,7 +26,10 @@ export const NAV = [
     items: [
       { label: "PNR Status", href: "/pnr-status", desc: "Booking and berth status" },
       { label: "Running Status", href: "/train-status", desc: "Where your train is now" },
+      { label: "Seats & Fare", href: "/seat-availability", desc: "Availability calendar, every fare" },
+      { label: "Vacant Berths", href: "/chart-vacancy", desc: "Free berths after charting" },
       { label: "Between Stations", href: "/trains-between-stations", desc: "Every train on a route" },
+      { label: "Cancelled Trains", href: "/cancelled-trains", desc: "Today's cancellations" },
       { label: "Train Schedule", href: "/train-schedule", desc: "Full station timetable" },
       { label: "Train Route", href: "/train-route", desc: "Stops, distances, map" },
       { label: "Railway Stations", href: "/railway-stations", desc: "Live station boards" },

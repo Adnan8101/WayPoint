@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <PageHeader eyebrow="Indian Railways" title="Train Route" description="Every station on the route, with distances, halts and a map where reliable coordinates exist." />
+      <PageHeader art="route" eyebrow="Indian Railways" title="Train Route" description="Every station on the route, with distances, halts and a map where reliable coordinates exist." />
       <Suspense fallback={<div className="relative mx-auto -mt-20 max-w-7xl px-4 sm:px-6"><ResultSkeleton rows={1} /></div>}>
         <ScheduleView mode="route" />
       </Suspense>

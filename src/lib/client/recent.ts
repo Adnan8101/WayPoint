@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 // Recent searches are kept only in this browser's localStorage. Only the search
 // query (e.g. a flight or PNR number) is stored, never the results.
 
-export type RecentKind = "flight" | "tracker" | "flight-search" | "airport" | "pnr" | "train" | "between" | "schedule" | "route" | "station";
+export type RecentKind = "flight" | "tracker" | "flight-search" | "airport" | "pnr" | "train" | "between" | "schedule" | "route" | "station" | "seats" | "vacancy";
 
 export interface RecentItem {
   kind: RecentKind;
@@ -14,12 +14,19 @@ export interface RecentItem {
   at: number;
 }
 
-const KEY = "travelhub:recent:v1";
+const KEY = "waypoint:recent:v1";
+/** Key used before the WayPoint rename; read once so saved searches carry over */
+const OLD_KEY = "travelhub:recent:v1";
 const MAX = 12;
-const EVENT = "travelhub:recent";
+const EVENT = "waypoint:recent";
 
 function read(): RecentItem[] {
   try {
+    const old = localStorage.getItem(OLD_KEY);
+    if (old !== null) {
+      if (localStorage.getItem(KEY) === null) localStorage.setItem(KEY, old);
+      localStorage.removeItem(OLD_KEY);
+    }
     const v = JSON.parse(localStorage.getItem(KEY) ?? "[]");
     return Array.isArray(v) ? v.filter((x) => x && typeof x.href === "string" && x.href.startsWith("/")) : [];
   } catch {

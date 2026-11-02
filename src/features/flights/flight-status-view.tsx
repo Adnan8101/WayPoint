@@ -45,7 +45,7 @@ export function FlightStatusView() {
           skeleton={<ResultSkeleton rows={5} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState title="Check any flight's live status">
+              <EmptyState art="flight" title="Check any flight's live status">
                 Enter a flight number and date to see departure and arrival times, gates, terminals and delays.
               </EmptyState>
               <RecentList kinds={["flight", "tracker"]} />
@@ -87,9 +87,9 @@ function FlightResult({ flight, date }: { flight: Flight; date: string }) {
         <FlightEndDetails title="Arrival" end={flight.arrival} isDeparture={false} />
       </div>
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
-        <Link href={`/flight-tracker?flight=${flight.number}&date=${date}`} className=" rounded-lg bg-ink px-3.5 py-2 font-medium text-white hover:bg-navy-700">Track on map →</Link>
-        {flight.departure.airport.iata && <Link href={`/airports/${flight.departure.airport.iata}`} className=" rounded-lg border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 hover:border-slate-300">{flight.departure.airport.iata} airport info</Link>}
-        {flight.arrival.airport.iata && <Link href={`/airports/${flight.arrival.airport.iata}`} className=" rounded-lg border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 hover:border-slate-300">{flight.arrival.airport.iata} airport info</Link>}
+        <Link href={`/flight-tracker?flight=${flight.number}&date=${date}`} className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 font-semibold text-white transition-colors hover:bg-signal hover:text-ink">Track on map →</Link>
+        {flight.departure.airport.iata && <Link href={`/airports/${flight.departure.airport.iata}`} className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-[var(--shadow-card)] transition-all hover:-translate-y-px hover:border-ink hover:text-ink">{flight.departure.airport.iata} airport info</Link>}
+        {flight.arrival.airport.iata && <Link href={`/airports/${flight.arrival.airport.iata}`} className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-[var(--shadow-card)] transition-all hover:-translate-y-px hover:border-ink hover:text-ink">{flight.arrival.airport.iata} airport info</Link>}
       </div>
     </Card>
   );

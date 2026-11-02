@@ -3,10 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { cx } from "@/lib/format";
 import { FieldLabel, inputClass } from "./ui";
-import { searchAirports } from "@/lib/data/airports";
-import { POPULAR_TRAINS, searchStations } from "@/lib/data/stations";
+import { Portal, useAnchoredStyle } from "./floating";
 import { getJson } from "@/lib/client/use-api";
-import type { TrainSuggestion } from "@/lib/types";
+import type { Airport, StationSuggestion, TrainSuggestion } from "@/lib/types";
 
 export interface Suggestion {
   /** Value placed in the input when selected */
@@ -38,6 +37,10 @@ export function Autocomplete({ id, label, value, onChange, onSelect, suggest, pl
   const listId = useId();
   const seq = useRef(0);
   const focused = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const showList = open && items.length > 0;
+  const anchored = useAnchoredStyle(showList, inputRef, listRef, { matchWidth: true, minWidth: 280 });
 
   useEffect(() => {
     if (!focused.current) return;
@@ -67,6 +70,7 @@ export function Autocomplete({ id, label, value, onChange, onSelect, suggest, pl
     <div className={cx("relative flex flex-col gap-1.5", className)}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <input
+        ref={inputRef}
         id={id}
         role="combobox"
         aria-expanded={open && items.length > 0}
@@ -107,8 +111,15 @@ export function Autocomplete({ id, label, value, onChange, onSelect, suggest, pl
         }}
         className={inputClass(!!error)}
       />
-      {open && items.length > 0 && (
-        <ul id={listId} role="listbox" className="absolute top-full z-30 mt-1.5 max-h-80 w-full min-w-[260px] overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-[var(--shadow-pop)]">
+      {showList && (
+        <Portal>
+        <ul
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          style={{ ...anchored, maxHeight: Math.min(320, Number(anchored.maxHeight ?? 320)) }}
+          className="animate-pop-in z-[70] overflow-auto overscroll-contain rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-[var(--shadow-pop)]"
+        >
           {items.map((s, i) => (
             <li
               key={s.value + i}
@@ -119,9 +130,13 @@ export function Autocomplete({ id, label, value, onChange, onSelect, suggest, pl
                 e.preventDefault();
                 choose(s);
               }}
-              className={cx("flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-sm", i === active ? "bg-brand-50" : "hover:bg-slate-50")}
+              className={cx("group flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors", i === active ? "bg-signal-soft" : "hover:bg-slate-100")}
             >
-              {s.badge && <span className="min-w-12 shrink-0 rounded-md bg-ink px-1.5 py-1 text-center font-mono text-[12px] font-medium text-white">{s.badge}</span>}
+              {s.badge && (
+                <span className={cx("min-w-14 shrink-0 rounded-lg px-1.5 py-1.5 text-center font-mono text-[12px] font-bold transition-colors", i === active ? "bg-ink text-signal" : "bg-slate-100 text-ink group-hover:bg-ink group-hover:text-signal")}>
+                  {s.badge}
+                </span>
+              )}
               <span className="min-w-0">
                 <span className="block truncate font-medium text-ink">{s.primary}</span>
                 {s.secondary && <span className="block truncate text-xs text-slate-500">{s.secondary}</span>}
@@ -129,28 +144,34 @@ export function Autocomplete({ id, label, value, onChange, onSelect, suggest, pl
             </li>
           ))}
         </ul>
+        </Portal>
       )}
-      {error ? <p className="text-[13px] text-red-600" role="alert">{error}</p> : hint ? <p className="text-[12.5px] text-slate-500">{hint}</p> : null}
+      {error ? <p className="animate-fade-up text-[13px] font-medium text-red-600" role="alert">{error}</p> : hint ? <p className="text-[12.5px] text-slate-500">{hint}</p> : null}
     </div>
   );
 }
 
 // ---- Ready-made suggestion sources ----
 
-export const suggestStations = (q: string): Suggestion[] =>
-  searchStations(q).map((s) => ({ value: s.code, primary: s.name, secondary: `${s.city}, ${s.state}`, badge: s.code }));
+// All live: stations from irctc.dev, airports from OurAirports, trains from irctc.dev
 
-export const suggestAirports = (q: string): Suggestion[] =>
-  searchAirports(q).map((a) => ({ value: a.iata, primary: a.name, secondary: `${a.city}, ${a.country} · ${a.icao}`, badge: a.iata }));
+export async function suggestStations(q: string): Promise<Suggestion[]> {
+  const s = q.trim();
+  if (s.length < 2) return [];
+  const list = (await getJson<StationSuggestion[]>(`/api/stations/search?q=${encodeURIComponent(s)}`)) ?? [];
+  return list.slice(0, 8).map((st) => ({ value: st.code, primary: st.name, secondary: st.state || undefined, badge: st.code }));
+}
+
+export async function suggestAirports(q: string): Promise<Suggestion[]> {
+  const s = q.trim();
+  if (s.length < 2) return [];
+  const list = (await getJson<Airport[]>(`/api/airports/search?q=${encodeURIComponent(s)}`)) ?? [];
+  return list.map((a) => ({ value: a.iata, primary: a.name, secondary: [a.city, a.country].filter(Boolean).join(", ") + (a.icao ? ` · ${a.icao}` : ""), badge: a.iata }));
+}
 
 export async function suggestTrains(q: string): Promise<Suggestion[]> {
-  const s = q.trim().toLowerCase();
+  const s = q.trim();
   if (s.length < 2) return [];
-  const local = POPULAR_TRAINS.filter((t) => t.number.startsWith(s) || t.name.toLowerCase().includes(s));
-  const remote = (await getJson<TrainSuggestion[]>(`/api/trains/search?q=${encodeURIComponent(s)}`)) ?? [];
-  const seen = new Set<string>();
-  return [...local, ...remote]
-    .filter((t) => (seen.has(t.number) ? false : (seen.add(t.number), true)))
-    .slice(0, 8)
-    .map((t) => ({ value: t.number, primary: t.name, badge: t.number }));
+  const list = (await getJson<TrainSuggestion[]>(`/api/trains/search?q=${encodeURIComponent(s)}`)) ?? [];
+  return list.slice(0, 8).map((t) => ({ value: t.number, primary: t.name, badge: t.number }));
 }

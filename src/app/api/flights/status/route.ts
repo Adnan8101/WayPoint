@@ -7,7 +7,7 @@ import { todayIn } from "@/lib/dates";
 
 export const GET = handle({ group: "flights", limit: 40 }, async (url) => {
   const number = normalizeFlightNumber(url.searchParams.get("number") ?? "");
-  if (!number) throw new ApiError("INVALID_FLIGHT", "Enter a valid flight number, for example AI101 or 6E2134.");
+  if (!number) throw new ApiError("INVALID_FLIGHT", "Enter a valid flight number.");
   const date = url.searchParams.get("date") ?? todayIn("UTC");
   if (!isValidDate(date)) throw new ApiError("INVALID_INPUT", "Enter a valid travel date.");
   const diff = dayDiff(todayIn("UTC"), date);

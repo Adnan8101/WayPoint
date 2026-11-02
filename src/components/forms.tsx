@@ -4,12 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Autocomplete, suggestAirports, suggestStations, suggestTrains } from "./autocomplete";
 import { Button, Field, SelectField } from "./ui";
-import { SearchIcon, SwapIcon } from "./icons";
+import { DateField } from "./date-field";
+import { SearchIcon, SeatIcon, SwapIcon } from "./icons";
 import { isValidDate, normalizeAirportCode, normalizeFlightNumber, normalizePnr, normalizeStationCode } from "@/lib/validation";
 import { todayIST, todayLocal } from "@/lib/dates";
-import { findAirport, searchAirports } from "@/lib/data/airports";
-import { findStation, searchStations } from "@/lib/data/stations";
-import { fmtDate } from "@/lib/format";
 
 /** Pull a 5-digit train number out of "12951", "12951 Mumbai Rajdhani", etc. */
 export function extractTrainNumber(v: string): string | null {
@@ -17,19 +15,17 @@ export function extractTrainNumber(v: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Resolve free text like "NDLS", "New Delhi" or "Mumbai" into a station code */
-function resolveStation(v: string): string | null {
-  const code = normalizeStationCode(v);
-  if (code && findStation(code)) return code;
-  // Prefer a name match ("Delhi" → NDLS); otherwise accept any well-formed code not in our list
-  return searchStations(v, 1)[0]?.code ?? code;
+/** Resolve free text (a code or a name) to a code via the same live search as the suggestions */
+async function resolveCode(v: string, normalize: (s: string) => string | null, search: (q: string) => Promise<{ value: string }[]>): Promise<string | null> {
+  const text = v.trim();
+  if (!text) return null;
+  const code = normalize(text);
+  const hits = await search(text).catch(() => []);
+  if (code && hits.some((h) => h.value === code)) return code;
+  return hits[0]?.value ?? code;
 }
-
-function resolveAirport(v: string): string | null {
-  const code = normalizeAirportCode(v);
-  if (code && findAirport(code)) return code;
-  return searchAirports(v, 1)[0]?.iata ?? code;
-}
+const resolveStation = (v: string) => resolveCode(v, normalizeStationCode, suggestStations);
+const resolveAirport = (v: string) => resolveCode(v, normalizeAirportCode, suggestAirports);
 
 function useBusyNav() {
   const router = useRouter();
@@ -57,7 +53,7 @@ export function FlightStatusForm({ target = "/flight-status", initial }: { targe
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const n = normalizeFlightNumber(number);
-    if (!n) return setError("Enter a flight number like AI101, 6E2134 or EK512.");
+    if (!n) return setError("Enter a flight number: the airline code followed by digits.");
     if (!isValidDate(date)) return setError("Choose a valid date.");
     setError(undefined);
     go(`${target}?flight=${n}&date=${date}`);
@@ -66,10 +62,10 @@ export function FlightStatusForm({ target = "/flight-status", initial }: { targe
   return (
     <form onSubmit={submit} className={gridForm} noValidate>
       <Field
-        id="flight-number" label="Flight number" value={number} placeholder="e.g. AI101" autoCapitalize="characters"
+        id="flight-number" label="Flight number" value={number} placeholder="Flight number" autoCapitalize="characters"
         onChange={(e) => setNumber(e.target.value)} error={error} hint="Airline code + number" maxLength={10}
       />
-      <Field id="flight-date" label="Travel date" type="date" value={date} onChange={(e) => setDate(e.target.value)} min={todayLocal(-1)} max={todayLocal(1)} hint="Live data: yesterday to tomorrow" />
+      <DateField id="flight-date" label="Travel date" value={date} onChange={setDate} min={todayLocal(-1)} max={todayLocal(1)} hint="Live data: yesterday to tomorrow" />
       <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-1 lg:mt-[26px]"><SearchIcon width={16} height={16} /> {target === "/flight-tracker" ? "Track flight" : "Check flight status"}</Button>
     </form>
   );
@@ -85,10 +81,10 @@ export function FlightSearchForm({ initial }: { initial?: Record<string, string>
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { busy, go } = useBusyNav();
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const f = resolveAirport(from);
-    const t = resolveAirport(to);
+    const f = await resolveAirport(from);
+    const t = await resolveAirport(to);
     const errs: Record<string, string> = {};
     if (!f) errs.from = "Choose a departure airport.";
     if (!t) errs.to = "Choose an arrival airport.";
@@ -106,8 +102,8 @@ export function FlightSearchForm({ initial }: { initial?: Record<string, string>
     <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
       <Autocomplete id="fs-from" label="From" value={from} onChange={setFrom} suggest={suggestAirports} placeholder="City or airport code" error={errors.from} className="lg:col-span-2" />
       <Autocomplete id="fs-to" label="To" value={to} onChange={setTo} suggest={suggestAirports} placeholder="City or airport code" error={errors.to} className="lg:col-span-2" />
-      <Field id="fs-date" label="Departure" type="date" value={date} onChange={(e) => setDate(e.target.value)} min={todayLocal(-1)} max={todayLocal(1)} error={errors.date} />
-      <Field id="fs-return" label="Return (optional)" type="date" value={ret} onChange={(e) => setRet(e.target.value)} min={date} max={todayLocal(1)} error={errors.return} />
+      <DateField id="fs-date" label="Departure" value={date} onChange={setDate} min={todayLocal(-1)} max={todayLocal(1)} error={errors.date} />
+      <DateField id="fs-return" label="Return (optional)" value={ret} onChange={setRet} min={date} max={todayLocal(1)} error={errors.return} optional rangeStart={date} placeholder="One way" />
       <SelectField id="fs-pax" label="Passengers" value={pax} onChange={setPax} options={Array.from({ length: 9 }, (_, i) => ({ value: String(i + 1), label: `${i + 1} ${i ? "passengers" : "passenger"}` }))} className="lg:col-span-2" />
       <SelectField id="fs-class" label="Travel class" value={cls} onChange={setCls} className="lg:col-span-2"
         options={[{ value: "economy", label: "Economy" }, { value: "premium", label: "Premium Economy" }, { value: "business", label: "Business" }, { value: "first", label: "First" }]} />
@@ -122,9 +118,9 @@ export function AirportSearchForm() {
   const [q, setQ] = useState("");
   const [error, setError] = useState<string>();
   const { busy, go } = useBusyNav();
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const code = resolveAirport(q);
+    const code = await resolveAirport(q);
     if (!code) return setError("No airport matches that name, code, city or country.");
     setError(undefined);
     go(`/airports/${code}`);
@@ -133,8 +129,8 @@ export function AirportSearchForm() {
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-[1fr_auto]">
       <Autocomplete
         id="airport-q" label="Airport name, code, city or country" value={q} onChange={setQ} error={error}
-        suggest={suggestAirports} onSelect={(s) => go(`/airports/${s.value}`)} placeholder="e.g. DEL, Heathrow, Dubai, Singapore"
-        hint="IATA (DEL) and ICAO (VIDP) codes both work"
+        suggest={suggestAirports} onSelect={(s) => go(`/airports/${s.value}`)} placeholder="Airport name, city or code"
+        hint="3-letter IATA and 4-letter ICAO codes both work"
       />
       <Button type="submit" loading={busy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> Find airport</Button>
     </form>
@@ -174,7 +170,6 @@ export function TrainStatusForm({ initial }: { initial?: { train?: string; date?
   const [date, setDate] = useState(initial?.date ?? todayIST());
   const [error, setError] = useState<string>();
   const { busy, go } = useBusyNav();
-  const days = [0, 1, 2, 3, 4].map((d) => todayIST(-d));
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const n = extractTrainNumber(train);
@@ -185,9 +180,8 @@ export function TrainStatusForm({ initial }: { initial?: { train?: string; date?
   return (
     <form onSubmit={submit} noValidate className={gridForm}>
       <Autocomplete id="ts-train" label="Train number or name" value={train} onChange={setTrain} suggest={suggestTrains} minChars={2}
-        placeholder="e.g. 12951 or Rajdhani" error={error} />
-      <SelectField id="ts-date" label="Journey start date" value={date} onChange={setDate}
-        options={days.map((d, i) => ({ value: d, label: `${["Today", "Yesterday", "2 days ago", "3 days ago", "4 days ago"][i]} · ${fmtDate(d, { day: "numeric", month: "short" })}` }))} />
+        placeholder="Train number or name" error={error} />
+      <DateField id="ts-date" label="Journey start date" value={date} onChange={setDate} min={todayIST(-4)} max={todayIST()} hint="The day the train left its first station" />
       <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-1 lg:mt-[26px]"><SearchIcon width={16} height={16} /> Track my train</Button>
     </form>
   );
@@ -199,10 +193,10 @@ export function TrainsBetweenForm({ initial }: { initial?: { from?: string; to?:
   const [date, setDate] = useState(initial?.date ?? todayIST());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { busy, go } = useBusyNav();
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const f = resolveStation(from);
-    const t = resolveStation(to);
+    const f = await resolveStation(from);
+    const t = await resolveStation(to);
     const errs: Record<string, string> = {};
     if (!f) errs.from = "Choose a valid station name or code.";
     if (!t) errs.to = "Choose a valid station name or code.";
@@ -214,13 +208,13 @@ export function TrainsBetweenForm({ initial }: { initial?: { from?: string; to?:
   };
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_1fr_200px_auto]">
-      <Autocomplete id="tb-from" label="From station" value={from} onChange={setFrom} suggest={suggestStations} placeholder="Name or code, e.g. NDLS" error={errors.from} />
+      <Autocomplete id="tb-from" label="From station" value={from} onChange={setFrom} suggest={suggestStations} placeholder="Station name or code" error={errors.from} />
       <button type="button" onClick={() => { setFrom(to); setTo(from); }} aria-label="Swap stations"
-        className="hidden h-12 items-center justify-center rounded-xl lg:mt-[26px] border border-slate-300 px-3 text-slate-600 hover:bg-slate-50 lg:flex">
+        className="group hidden size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-[var(--shadow-card)] transition-all duration-500 ease-[var(--ease-spring)] hover:rotate-180 hover:border-ink hover:bg-ink hover:text-signal lg:mt-[26px] lg:flex">
         <SwapIcon width={18} height={18} />
       </button>
-      <Autocomplete id="tb-to" label="To station" value={to} onChange={setTo} suggest={suggestStations} placeholder="Name or code, e.g. CSMT" error={errors.to} />
-      <Field id="tb-date" label="Journey date" type="date" value={date} onChange={(e) => setDate(e.target.value)} min={todayIST()} max={todayIST(120)} error={errors.date} />
+      <Autocomplete id="tb-to" label="To station" value={to} onChange={setTo} suggest={suggestStations} placeholder="Station name or code" error={errors.to} />
+      <DateField id="tb-date" label="Journey date" value={date} onChange={setDate} min={todayIST()} max={todayIST(120)} error={errors.date} />
       <Button type="submit" loading={busy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> Find trains</Button>
     </form>
   );
@@ -240,8 +234,90 @@ export function TrainNumberForm({ target, initial, cta }: { target: "/train-sche
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-[1fr_auto]">
       <Autocomplete id={`${target}-train`} label="Train number or name" value={train} onChange={setTrain} suggest={suggestTrains} minChars={2}
-        placeholder="e.g. 12002 or Shatabdi" error={error} />
+        placeholder="Train number or name" error={error} />
       <Button type="submit" loading={busy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> {cta}</Button>
+    </form>
+  );
+}
+
+export const CLASS_OPTIONS = [
+  { value: "SL", label: "Sleeper (SL)" },
+  { value: "3E", label: "AC 3 Economy (3E)" },
+  { value: "3A", label: "AC 3 Tier (3A)" },
+  { value: "2A", label: "AC 2 Tier (2A)" },
+  { value: "1A", label: "AC First Class (1A)" },
+  { value: "CC", label: "AC Chair Car (CC)" },
+  { value: "EC", label: "Executive Chair (EC)" },
+];
+export const QUOTA_OPTIONS = [
+  { value: "GN", label: "General" },
+  { value: "TQ", label: "Tatkal" },
+  { value: "PT", label: "Premium Tatkal" },
+  { value: "LD", label: "Ladies" },
+];
+
+export function SeatsForm({ initial }: { initial?: Record<string, string | undefined> }) {
+  const [train, setTrain] = useState(initial?.train ?? "");
+  const [from, setFrom] = useState(initial?.from ?? "");
+  const [to, setTo] = useState(initial?.to ?? "");
+  const [date, setDate] = useState(initial?.date ?? todayIST(1));
+  const [cls, setCls] = useState(initial?.class ?? "3A");
+  const [quota, setQuota] = useState(initial?.quota ?? "GN");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { busy, go } = useBusyNav();
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const n = extractTrainNumber(train);
+    const f = await resolveStation(from);
+    const t = await resolveStation(to);
+    const errs: Record<string, string> = {};
+    if (!n) errs.train = "Enter a 5-digit train number, or pick one from the suggestions.";
+    if (!f) errs.from = "Choose a station on the train's route.";
+    if (!t) errs.to = "Choose a station on the train's route.";
+    if (f && t && f === t) errs.to = "From and To must be different.";
+    if (!isValidDate(date)) errs.date = "Choose a valid date.";
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    go(`/seat-availability?${new URLSearchParams({ train: n!, from: f!, to: t!, date, class: cls, quota })}`);
+  };
+  return (
+    <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <Autocomplete id="sa-train" label="Train number or name" value={train} onChange={setTrain} suggest={suggestTrains} minChars={2} placeholder="Train number or name" error={errors.train} className="sm:col-span-2" />
+      <Autocomplete id="sa-from" label="From station" value={from} onChange={setFrom} suggest={suggestStations} placeholder="Station name or code" error={errors.from} className="lg:col-span-2" />
+      <Autocomplete id="sa-to" label="To station" value={to} onChange={setTo} suggest={suggestStations} placeholder="Station name or code" error={errors.to} className="lg:col-span-2" />
+      <DateField id="sa-date" label="Journey date" value={date} onChange={setDate} min={todayIST()} max={todayIST(120)} error={errors.date} className="lg:col-span-2" />
+      <SelectField id="sa-class" label="Class" value={cls} onChange={setCls} options={CLASS_OPTIONS} />
+      <SelectField id="sa-quota" label="Quota" value={quota} onChange={setQuota} options={QUOTA_OPTIONS} />
+      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:mt-[26px]"><SeatIcon width={17} height={17} /> Check seats & fare</Button>
+    </form>
+  );
+}
+
+export function VacancyForm({ initial }: { initial?: Record<string, string | undefined> }) {
+  const [train, setTrain] = useState(initial?.train ?? "");
+  const [boarding, setBoarding] = useState(initial?.boarding ?? "");
+  const [date, setDate] = useState(initial?.date ?? todayIST());
+  const [cls, setCls] = useState(initial?.class ?? "ALL");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { busy, go } = useBusyNav();
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const n = extractTrainNumber(train);
+    const b = await resolveStation(boarding);
+    const errs: Record<string, string> = {};
+    if (!n) errs.train = "Enter a 5-digit train number, or pick one from the suggestions.";
+    if (!b) errs.boarding = "Choose the station where you board.";
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    go(`/chart-vacancy?${new URLSearchParams({ train: n!, boarding: b!, date, class: cls })}`);
+  };
+  return (
+    <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1.2fr_1fr_0.9fr_auto]">
+      <Autocomplete id="cv-train" label="Train number or name" value={train} onChange={setTrain} suggest={suggestTrains} minChars={2} placeholder="Train number or name" error={errors.train} />
+      <Autocomplete id="cv-board" label="Boarding station" value={boarding} onChange={setBoarding} suggest={suggestStations} placeholder="Station name or code" error={errors.boarding} />
+      <DateField id="cv-date" label="Boarding date" value={date} onChange={setDate} min={todayIST(-1)} max={todayIST(1)} />
+      <SelectField id="cv-class" label="Class" value={cls} onChange={setCls} options={[{ value: "ALL", label: "All classes" }, ...CLASS_OPTIONS.filter((c) => ["1A", "2A", "3A", "3E", "SL"].includes(c.value))]} />
+      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-1 lg:mt-[26px]"><SeatIcon width={17} height={17} /> Find berths</Button>
     </form>
   );
 }
@@ -250,9 +326,9 @@ export function StationSearchForm() {
   const [q, setQ] = useState("");
   const [error, setError] = useState<string>();
   const { busy, go } = useBusyNav();
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const code = resolveStation(q);
+    const code = await resolveStation(q);
     if (!code) return setError("No station matches that name, code or city.");
     setError(undefined);
     go(`/railway-stations/${code}`);
@@ -260,7 +336,7 @@ export function StationSearchForm() {
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-[1fr_auto]">
       <Autocomplete id="station-q" label="Station name, code or city" value={q} onChange={setQ} error={error} suggest={suggestStations}
-        onSelect={(s) => go(`/railway-stations/${s.value}`)} placeholder="e.g. NDLS, Howrah, Bengaluru" />
+        onSelect={(s) => go(`/railway-stations/${s.value}`)} placeholder="Station name or code" />
       <Button type="submit" loading={busy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> Find station</Button>
     </form>
   );

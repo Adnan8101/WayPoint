@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { NAV, SITE } from "@/lib/site";
 import { cx } from "@/lib/format";
-import { ArrowRightIcon, BuildingIcon, ClockIcon, CloseIcon, MapIcon, MenuIcon, PlaneIcon, RouteIcon, SearchIcon, TicketIcon, TrainIcon } from "./icons";
+import { ArrowRightIcon, BanIcon, BerthIcon, BuildingIcon, ClockIcon, SeatIcon, CloseIcon, MapIcon, MenuIcon, PlaneIcon, RouteIcon, SearchIcon, TicketIcon, TrainIcon } from "./icons";
 import { LocalClock } from "./local-clock";
 import { useScrolled } from "./motion";
 
@@ -20,25 +20,31 @@ const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   "/train-schedule": ClockIcon,
   "/train-route": RouteIcon,
   "/railway-stations": BuildingIcon,
+  "/seat-availability": SeatIcon,
+  "/chart-vacancy": BerthIcon,
+  "/cancelled-trains": BanIcon,
 };
 
-const FEATURE: Record<string, { title: string; body: string; href: string; cta: string; zone: string; city: string }> = {
-  Flights: { title: "Gate changed?", body: "Flight status shows terminal, gate and belt the moment the airline reports them.", href: "/flight-status", cta: "Check a flight", zone: "Asia/Kolkata", city: "DEL" },
-  Trains: { title: "Chart prepared?", body: "PNR status tells you the moment your berth is confirmed, passenger by passenger.", href: "/pnr-status", cta: "Check a PNR", zone: "Asia/Kolkata", city: "NDLS" },
+const FEATURE: Record<string, { title: string; body: string; href: string; cta: string }> = {
+  Flights: { title: "Gate changed?", body: "Flight status shows terminal, gate and belt the moment the airline reports them.", href: "/flight-status", cta: "Check a flight" },
+  Trains: { title: "Chart prepared?", body: "PNR status tells you the moment your berth is confirmed, passenger by passenger.", href: "/pnr-status", cta: "Check a PNR" },
 };
 
 export function Logo({ light = true }: { light?: boolean }) {
   return (
     <Link href="/" className="group flex items-center gap-2.5" aria-label={`${SITE.name} home`}>
       <span className="relative grid size-9 place-items-center overflow-hidden rounded-[11px] bg-signal shadow-[inset_0_-2px_0_rgb(0_0_0/0.15)] transition-transform duration-500 ease-[var(--ease-spring)] group-hover:-rotate-6" aria-hidden>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M4 17c3.5-8 12.5-8 16 0" stroke="#0b0d10" strokeWidth="2.4" strokeLinecap="round" strokeDasharray="0.1 4.4" />
-          <circle cx="4" cy="17" r="2.4" fill="#0b0d10" />
-          <path d="M17.6 14.6 20 17l-2.4 2.4" stroke="#0b0d10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Waypoint pin at the end of a dashed trail */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M3 20.5c2.5-.2 4.2-1 5.6-2.4" stroke="#0b0d10" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="0.1 3.6" />
+          <g className="transition-transform duration-500 ease-[var(--ease-spring)] group-hover:-translate-y-0.5">
+            <path d="M15 21s6-5.6 6-10.4A6 6 0 0 0 9 10.6C9 15.4 15 21 15 21z" fill="#0b0d10" />
+            <circle cx="15" cy="10.5" r="2.3" fill="#ffc21a" />
+          </g>
         </svg>
       </span>
-      <span className={cx("font-display text-[19px] font-bold tracking-[-0.02em]", light ? "text-white" : "text-ink")}>
-        {SITE.name}
+      <span className={cx("font-display text-[20px] font-bold tracking-[-0.03em]", light ? "text-white" : "text-ink")}>
+        Way<span className={light ? "text-signal" : "text-ink/60"}>Point</span>
       </span>
     </Link>
   );
@@ -109,7 +115,7 @@ export function Header() {
               <span className="absolute inset-0 animate-ping rounded-full bg-brand-400 opacity-70" />
               <span className="relative size-1.5 rounded-full bg-brand-400" />
             </span>
-            IST <span className="font-medium text-white"><LocalClock timeZone="Asia/Kolkata" /></span>
+            <span className="font-medium text-white"><LocalClock withZone /></span>
           </div>
           <Link
             href="/pnr-status"
@@ -202,7 +208,7 @@ function MegaMenu({ label, items, isActive }: { label: string; items: { label: s
           <Link href={f.href} className="group relative flex w-[210px] shrink-0 flex-col justify-between overflow-hidden rounded-2xl bg-ink p-5 text-white">
             <div className="grid-lines absolute inset-0 opacity-60" aria-hidden />
             <div className="relative">
-              <p className="label !text-signal">{f.city} · <LocalClock timeZone={f.zone} /></p>
+              <p className="label !text-signal">Your time · <LocalClock /></p>
               <p className="font-display mt-3 text-[24px] font-semibold">{f.title}</p>
               <p className="mt-2 text-[13px] leading-relaxed text-white/60">{f.body}</p>
             </div>

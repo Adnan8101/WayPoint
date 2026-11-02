@@ -219,6 +219,138 @@ export interface TrainBetween {
   intermediateStops?: number;
   runDays: string[]; // e.g. ["Mon","Wed"]
   classes: string[];
+  /** Days after the train's start that it reaches `to` (0 = same day) */
+  arrivalDayOffset?: number;
+  distanceKm?: number;
+  /** Indicative fare from the provider, in INR; check IRCTC before booking */
+  estimatedFare?: number;
+}
+
+export type TravelClass = "1A" | "2A" | "3A" | "3E" | "CC" | "EC" | "SL";
+export type Quota = "GN" | "TQ" | "PT" | "LD";
+export type AvailabilityType = "AVAILABLE" | "RAC" | "WAITLIST" | "REGRET" | "OTHER";
+
+export interface SeatAvailability {
+  trainNumber: string;
+  trainName: string;
+  from: string;
+  to: string;
+  travelClass: string;
+  quota: string;
+  days: { date: string; status: string; type: AvailabilityType }[];
+}
+
+export interface FareClass {
+  travelClass: string;
+  className: string;
+  total: number;
+  breakup: { label: string; amount: number }[];
+  berthTypes: string[];
+}
+
+export interface TrainFare {
+  trainNumber: string;
+  trainName: string;
+  from: string;
+  to: string;
+  quota: string;
+  distanceKm?: number;
+  fares: FareClass[];
+}
+
+export interface VacantBerth {
+  coach: string;
+  travelClass: string;
+  berthNo: number;
+  berthType: string;
+  /** The berth is free only for this stretch of the journey */
+  from: string;
+  to: string;
+}
+
+export interface ChartVacancy {
+  trainNumber: string;
+  trainName: string;
+  boarding: string;
+  from: string;
+  to: string;
+  date: string;
+  chartPrepared: boolean;
+  chartPhase?: string;
+  chartTime?: string;
+  remoteStation?: string;
+  nextRemoteStation?: string;
+  total: number;
+  byClass: Record<string, number>;
+  berths: VacantBerth[];
+}
+
+export interface CancelledTrain {
+  trainNumber: string;
+  trainName: string;
+  trainType?: string;
+  source: string;
+  destination: string;
+  partial: boolean;
+  cancelledFrom?: string;
+  cancelledTo?: string;
+  startDate: string;
+}
+
+export interface CancelledTrains {
+  date: string;
+  fullCount: number;
+  partialCount: number;
+  trains: CancelledTrain[];
+}
+
+export interface StationTimetableTrain {
+  trainNumber: string;
+  trainName: string;
+  trainType?: string;
+  arrival?: string;
+  departure?: string;
+  from: string;
+  to: string;
+  runDays: string[];
+}
+
+export interface StationTimetable {
+  station: string;
+  date: string;
+  day: string;
+  trains: StationTimetableTrain[];
+}
+
+/** Airport reference record (OurAirports), with a time zone once looked up */
+export interface Airport {
+  iata: string;
+  icao: string;
+  name: string;
+  city: string;
+  country: string;
+  countryCode: string;
+  lat: number;
+  lon: number;
+  /** 3 = large, 2 = medium, 1 = small */
+  size: number;
+  scheduled: boolean;
+  timeZone?: string;
+}
+
+/** Railway station reference record (irctc.dev), with approximate coordinates when geocoded */
+export interface Station {
+  code: string;
+  name: string;
+  state?: string;
+  lat?: number;
+  lon?: number;
+}
+
+export interface StationSuggestion {
+  code: string;
+  name: string;
+  state?: string;
 }
 
 export interface ScheduleStop {
@@ -264,6 +396,9 @@ export interface StationBoardTrain {
   expectedDeparture?: TimeValue;
   delayMinutes?: number;
   platform?: string;
+  /** Platform announced but may still change */
+  platformProvisional?: boolean;
+  trainType?: string;
 }
 
 export interface StationBoard {
@@ -276,7 +411,7 @@ export interface StationBoard {
 // ---------- Travel information ----------
 
 export interface WeatherReport {
-  location: { name: string; region?: string; country?: string; lat: number; lon: number; timeZone: string };
+  location: Place;
   current: {
     time: string;
     temperatureC: number;
@@ -286,7 +421,18 @@ export interface WeatherReport {
     windDirDeg?: number;
     code: number;
     isDay: boolean;
+    /** Provider's own wording, e.g. "light rain" */
+    description?: string;
+    /** Local "HH:mm" */
+    sunrise?: string;
+    sunset?: string;
+    visibilityKm?: number;
+    pressureHpa?: number;
+    gustKmh?: number;
+    cloudPct?: number;
   };
+  /** Next ~24 hours in 3-hour steps; `time` is local "YYYY-MM-DDTHH:mm" */
+  hourly: { time: string; tempC: number; code: number; isDay: boolean; precipProb?: number }[];
   daily: { date: string; maxC: number; minC: number; code: number; precipProb?: number }[];
   utcOffsetSeconds: number;
   timeZoneAbbr?: string;
@@ -294,9 +440,13 @@ export interface WeatherReport {
 
 export interface Place {
   name: string;
+  /** Finer area than region, e.g. a district */
+  district?: string;
   region?: string;
   country?: string;
+  countryCode?: string;
   lat: number;
   lon: number;
-  timeZone: string;
+  /** IANA zone, when the geocoder reports one */
+  timeZone?: string;
 }

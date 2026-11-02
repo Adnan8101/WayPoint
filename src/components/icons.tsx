@@ -60,6 +60,18 @@ export const CloseIcon = (p: P) => (
 export const ArrowRightIcon = (p: P) => (
   <svg {...base(p)}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 );
+export const SeatIcon = (p: P) => (
+  <svg {...base(p)}><path d="M6 4v9a2 2 0 0 0 2 2h7l3 5" /><path d="M6 13h9a2 2 0 0 1 2 2" /><path d="M9 8h5M4 20h6" /></svg>
+);
+export const RupeeIcon = (p: P) => (
+  <svg {...base(p)}><path d="M6 4h12M6 9h12M14 4c3 0 4 2.2 4 5s-2 5-6 5H6l8 7" /></svg>
+);
+export const BanIcon = (p: P) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>
+);
+export const BerthIcon = (p: P) => (
+  <svg {...base(p)}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M3 15h18M12 4v16" /></svg>
+);
 export const SwapIcon = (p: P) => (
   <svg {...base(p)}><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" /></svg>
 );

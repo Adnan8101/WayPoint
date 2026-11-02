@@ -8,7 +8,7 @@ import { todayIn } from "@/lib/dates";
 export const GET = handle({ group: "flight-search", limit: 15 }, async (url) => {
   const from = normalizeAirportCode(url.searchParams.get("from") ?? "");
   const to = normalizeAirportCode(url.searchParams.get("to") ?? "");
-  if (!from || !to) throw new ApiError("INVALID_AIRPORT", "Choose valid departure and arrival airports (IATA codes such as DEL or BOM).");
+  if (!from || !to) throw new ApiError("INVALID_AIRPORT", "Choose valid departure and arrival airports.");
   if (from === to) throw new ApiError("INVALID_AIRPORT", "Departure and arrival airports must be different.");
   const date = url.searchParams.get("date") ?? "";
   if (!isValidDate(date)) throw new ApiError("INVALID_INPUT", "Enter a valid departure date.");

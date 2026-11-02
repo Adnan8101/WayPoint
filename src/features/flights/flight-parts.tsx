@@ -30,7 +30,7 @@ export function AirlineLogo({ iata, name }: { iata?: string; name: string }) {
   const [failed, setFailed] = useState(false);
   if (!iata || failed) {
     return (
-      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink font-mono text-[13px] font-medium text-white" aria-hidden>
+      <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-ink font-mono text-[14px] font-bold text-signal" aria-hidden>
         {(iata ?? name).slice(0, 2).toUpperCase()}
       </span>
     );
@@ -66,16 +66,19 @@ export function FlightTimeline({ flight }: { flight: Flight }) {
             {dur ? fmtDuration(dur) : " "}
             {flight.distanceKm ? ` · ${Math.round(flight.distanceKm).toLocaleString("en-IN")} km` : ""}
           </p>
-          <div className="relative h-1.5 rounded-full bg-slate-100">
+          <div className="relative h-1.5 rounded-full bg-[repeating-linear-gradient(90deg,var(--color-slate-200)_0_6px,transparent_6px_11px)]">
             {p !== undefined && !cancelled && (
-              <div className="absolute inset-y-0 left-0 rounded-full bg-brand-500 transition-all" style={{ width: `${p * 100}%` }} />
+              <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-ink to-ink/80 transition-[width] duration-1000 ease-[var(--ease-out-expo)]" style={{ width: `${p * 100}%` }} />
             )}
-            {cancelled && <div className="absolute inset-0 rounded-full bg-red-300" />}
-            <span className="absolute -left-0.5 top-1/2 size-3 -translate-y-1/2 rounded-full border-[3px] border-white bg-ink shadow" aria-hidden />
-            <span className="absolute -right-0.5 top-1/2 size-3 -translate-y-1/2 rounded-full border-2 border-ink bg-white" aria-hidden />
+            {cancelled && <div className="hazard absolute inset-0 rounded-full opacity-70" />}
+            <span className="absolute -left-0.5 top-1/2 size-3.5 -translate-y-1/2 rounded-full border-[3px] border-white bg-ink shadow" aria-hidden />
+            <span className="absolute -right-0.5 top-1/2 size-3.5 -translate-y-1/2 rounded-full border-2 border-ink bg-white" aria-hidden />
             {p !== undefined && !cancelled && (
-              <span className="absolute top-1/2 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-ink text-mint shadow-lg ring-4 ring-white" style={{ left: `${p * 100}%` }}>
-                <PlaneIcon width={17} height={17} className="rotate-45" />
+              <span
+                className="absolute top-1/2 grid size-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-signal text-ink shadow-[0_0_0_5px_white,0_0_0_6px_rgb(29_22_12/0.08),0_8px_24px_-4px_rgb(230_160_0/0.7)] transition-[left] duration-1000 ease-[var(--ease-out-expo)]"
+                style={{ left: `${p * 100}%` }}
+              >
+                <PlaneIcon width={18} height={18} className="rotate-45" />
               </span>
             )}
           </div>
@@ -87,7 +90,7 @@ export function FlightTimeline({ flight }: { flight: Flight }) {
         <ol className="mt-6 grid grid-cols-5 gap-1.5">
           {stages.map((s, i) => (
             <li key={s} className="text-center">
-              <div className={cx("h-1 rounded-full", i <= currentIdx ? "bg-brand-500" : "bg-slate-100")} />
+              <div className={cx("h-1 rounded-full transition-colors duration-700", i < currentIdx ? "bg-ink" : i === currentIdx ? "bg-signal" : "bg-slate-200")} style={{ transitionDelay: `${i * 80}ms` }} />
               <p className={cx("mt-2 flex items-center justify-center gap-1 text-[12px] font-medium", i === currentIdx ? "text-ink" : i < currentIdx ? "text-slate-500" : "text-slate-300")}>
                 {i < currentIdx && <CheckIcon width={12} height={12} className="text-brand-600" />}
                 {s}
@@ -111,7 +114,7 @@ function duration(f: Flight): number | undefined {
 function AirportCode({ end, align = "left" }: { end: FlightEnd; align?: "left" | "right" }) {
   return (
     <div className={cx("w-20 shrink-0 sm:w-28", align === "right" && "text-right")}>
-      <p className="font-display text-4xl font-semibold text-ink sm:text-5xl">{end.airport.iata ?? end.airport.icao ?? "—"}</p>
+      <p className="font-display text-4xl font-bold text-ink sm:text-[56px]">{end.airport.iata ?? end.airport.icao ?? "—"}</p>
       <p className="mt-1 truncate text-[13px] text-slate-500" title={end.airport.name}>{end.airport.city ?? end.airport.name}</p>
     </div>
   );
@@ -129,7 +132,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export function FlightEndDetails({ title, end, isDeparture }: { title: string; end: FlightEnd; isDeparture: boolean }) {
   const delay = fmtDelay(end.delayMinutes);
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
+    <div data-reveal className="rounded-[20px] border border-slate-200/80 bg-slate-50/70 p-5 transition-colors hover:bg-white">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="label">{title}</p>
@@ -162,7 +165,7 @@ export function FlightHeader({ flight }: { flight: Flight }) {
       <AirlineLogo iata={flight.airline.iata} name={flight.airline.name} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <h2 className="font-mono text-[22px] font-semibold tracking-tight text-ink">{flight.number}</h2>
+          <h2 className="font-display text-[30px] font-bold text-ink">{flight.number}</h2>
           <CopyButton value={flight.number} label="flight number" />
         </div>
         <p className="text-[14px] text-slate-500">{flight.airline.name}{flight.aircraft?.model ? ` · ${flight.aircraft.model}` : ""}{flight.aircraft?.registration ? ` · ${flight.aircraft.registration}` : ""}</p>

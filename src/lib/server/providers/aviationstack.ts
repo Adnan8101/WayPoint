@@ -1,6 +1,6 @@
 import "server-only";
 import type { AirportBoard, AirportRef, BoardFlight, Flight, FlightEnd, FlightSearchResult, FlightStatus } from "@/lib/types";
-import { findAirport } from "@/lib/data/airports";
+import { airportIndex, peekAirport } from "./ourairports";
 import { ApiError } from "../errors";
 import { fetchJson } from "../http";
 import { arr, get, num, obj, str } from "../pick";
@@ -64,7 +64,7 @@ function localIso(v: string | undefined, timeZone: string | undefined): string |
 
 function airportOf(o: unknown): AirportRef {
   const iata = str(o, "iata");
-  const ref = findAirport(iata ?? str(o, "icao"));
+  const ref = peekAirport(iata ?? str(o, "icao"));
   return {
     iata,
     icao: str(o, "icao") ?? ref?.icao,
@@ -172,6 +172,8 @@ export type DatedFlight = Flight & { flightDate?: string };
 
 /** All recent operations of a flight number (one provider request). */
 export async function getFlightsByNumber(number: string): Promise<DatedFlight[]> {
+  // Load airport reference data so city and coordinates can be filled in
+  await airportIndex().catch(() => undefined);
   const isIcao = /^[A-Z]{3}\d/.test(number);
   const raw = await flights(isIcao ? { flight_icao: number } : { flight_iata: number });
   return raw.map(toFlight).filter((f) => f.number);
@@ -213,6 +215,8 @@ function boardItem(raw: unknown, direction: "departure" | "arrival"): BoardFligh
 
 /** Current arrivals and departures. Costs two provider requests, so callers should cache it. */
 export async function getAirportBoard(code: string, _timeZone: string): Promise<AirportBoard> {
+  // Load airport reference data so city and coordinates can be filled in
+  await airportIndex().catch(() => undefined);
   const key = code.length === 4 ? "icao" : "iata";
   const [deps, arrs] = await Promise.all([flights({ [`dep_${key}`]: code }), flights({ [`arr_${key}`]: code })]);
   const byTime = (a: BoardFlight, b: BoardFlight) => Date.parse(a.scheduled?.value ?? "") - Date.parse(b.scheduled?.value ?? "");
@@ -236,6 +240,8 @@ export async function getAirportBoard(code: string, _timeZone: string): Promise<
 
 /** Direct flights between two airports among the provider's current flights. One provider request. */
 export async function searchFlights(fromCode: string, toCode: string, date: string): Promise<FlightSearchResult[]> {
+  // Load airport reference data so city and coordinates can be filled in
+  await airportIndex().catch(() => undefined);
   const raw = await flights({ dep_iata: fromCode, arr_iata: toCode });
   const seen = new Set<string>();
   const results: FlightSearchResult[] = [];

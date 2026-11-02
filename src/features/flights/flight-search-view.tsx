@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { FlightSearchResult } from "@/lib/types";
 import { useApi } from "@/lib/client/use-api";
 import { addRecent } from "@/lib/client/recent";
-import { findAirport } from "@/lib/data/airports";
+import { useAirport } from "@/lib/client/lookups";
 import { fmtDate, fmtDayOf, fmtDuration } from "@/lib/format";
 import { FlightSearchForm } from "@/components/forms";
 import { SearchPanel, Section } from "@/components/page-header";
@@ -56,8 +56,8 @@ export function FlightSearchView() {
           skeleton={<ResultSkeleton rows={6} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState title="Discover flights between airports">
-                Search by city or airport code to see direct flights on a date with times, duration and aircraft. Travel Hub is an information service: book directly with the airline.
+              <EmptyState art="search" title="Discover flights between airports">
+                Search by city or airport code to see direct flights on a date with times, duration and aircraft. WayPoint is an information service: book directly with the airline.
               </EmptyState>
               <RecentList kinds={["flight-search"]} />
             </div>
@@ -88,14 +88,14 @@ function Results({ data, meta, refreshing, refresh, from, to, date, pax, cls }: 
             : (a.durationMinutes ?? Infinity) - (b.durationMinutes ?? Infinity),
       );
   }, [data, sort, airline]);
-  const fromA = findAirport(from);
-  const toA = findAirport(to);
+  const fromA = useAirport(from);
+  const toA = useAirport(to);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-tight text-ink">{fromA?.city ?? from} → {toA?.city ?? to}</h2>
+          <h2 className="font-display text-[30px] font-bold text-ink">{fromA?.city || from} <span className="text-signal">→</span> {toA?.city || to}</h2>
           <p className="text-sm text-slate-600">{rows.length} direct flight{rows.length === 1 ? "" : "s"} on {fmtDate(date)}{pax ? ` · ${pax} passenger${pax === "1" ? "" : "s"}` : ""}{cls ? ` · ${cls[0].toUpperCase()}${cls.slice(1)}` : ""}</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -105,7 +105,7 @@ function Results({ data, meta, refreshing, refresh, from, to, date, pax, cls }: 
         </div>
       </div>
       <Freshness meta={meta} onRefresh={refresh} refreshing={refreshing} />
-      <p className=" bg-sky-50 px-4 py-2 text-sm text-sky-900">
+      <p className="rounded-2xl bg-sky-50 px-4 py-2.5 text-sm text-sky-900 ring-1 ring-inset ring-sky-200/70">
         Showing direct flights from the departure schedule. Fares are not available from our data source, so check the airline for prices and seat availability.
       </p>
       <ul className="space-y-3">
@@ -115,7 +115,7 @@ function Results({ data, meta, refreshing, refresh, from, to, date, pax, cls }: 
               <div className="flex items-center gap-3">
                 <AirlineLogo iata={f.airline.iata} name={f.airline.name} />
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1 font-semibold text-slate-900">{f.number} <CopyButton value={f.number} label="flight number" /></p>
+                  <p className="flex items-center gap-1 font-semibold text-ink">{f.number} <CopyButton value={f.number} label="flight number" /></p>
                   <p className="truncate text-xs text-slate-500">{f.airline.name}{f.aircraftModel ? ` · ${f.aircraftModel}` : ""}</p>
                 </div>
               </div>
@@ -130,7 +130,7 @@ function Results({ data, meta, refreshing, refresh, from, to, date, pax, cls }: 
               </div>
               <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
                 <FlightStatusPill status={f.status} />
-                <Link href={`/flight-status?flight=${f.number}&date=${date}`} className="text-sm font-medium text-brand-700 hover:underline">Flight status →</Link>
+                <Link href={`/flight-status?flight=${f.number}&date=${date}`} className="text-sm font-medium text-ink underline decoration-signal decoration-2 underline-offset-4 transition-colors hover:decoration-ink">Flight status →</Link>
               </div>
             </Card>
           </li>

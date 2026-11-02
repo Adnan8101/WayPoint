@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { ApiMeta, TrainBetween } from "@/lib/types";
 import { useApi } from "@/lib/client/use-api";
 import { addRecent } from "@/lib/client/recent";
-import { findStation } from "@/lib/data/stations";
 import { todayIST } from "@/lib/dates";
 import { cx, fmtDate, fmtDuration } from "@/lib/format";
 import { TrainsBetweenForm } from "@/components/forms";
@@ -44,7 +43,7 @@ export function BetweenView() {
           skeleton={<ResultSkeleton rows={6} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState title="Find trains between any two stations">Search by station name or code. Results show timings, duration, running days and available classes.</EmptyState>
+              <EmptyState art="between" title="Find trains between any two stations">Search by station name or code. Results show timings, duration, running days and available classes.</EmptyState>
               <RecentList kinds={["between"]} />
             </div>
           }
@@ -91,15 +90,15 @@ function Results({ data, meta, refreshing, refresh, from, to, date }: { data: Tr
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-tight text-ink">{findStation(from)?.name ?? from} → {findStation(to)?.name ?? to}</h2>
+          <h2 className="font-display text-[30px] font-bold text-ink">{data[0]?.from.name ?? from} <span className="text-signal">→</span> {data[0]?.to.name ?? to}</h2>
           <p className="text-sm text-slate-600">{rows.length} of {data.length} trains · {fmtDate(date, { weekday: "long", day: "numeric", month: "long" })}</p>
         </div>
         <ShareButton title={`Trains from ${from} to ${to}`} />
       </div>
       <Freshness meta={meta} onRefresh={refresh} refreshing={refreshing} />
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        <aside aria-label="Filters" className="space-y-3 border border-slate-200 bg-white p-4 lg:self-start">
-          <div className="flex items-center justify-between"><h3 className="text-lg font-semibold text-ink">Filters</h3><button type="button" onClick={reset} className="text-xs font-medium text-brand-700">Reset</button></div>
+        <aside aria-label="Filters" className="space-y-3 rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-card)] lg:sticky lg:top-24 lg:self-start">
+          <div className="flex items-center justify-between"><h3 className="font-display text-[22px] font-bold text-ink">Filters</h3><button type="button" onClick={reset} className="text-xs font-medium text-brand-700">Reset</button></div>
           <SelectField id="f-sort" label="Sort by" value={sort} onChange={(v) => setSort(v as typeof sort)} options={[{ value: "dep", label: "Departure" }, { value: "arr", label: "Arrival" }, { value: "dur", label: "Duration" }]} />
           <SelectField id="f-dep" label="Departure time" value={dep} onChange={setDep} options={SLOTS} />
           <SelectField id="f-arr" label="Arrival time" value={arr} onChange={setArr} options={SLOTS} />
@@ -116,35 +115,47 @@ function Results({ data, meta, refreshing, refresh, from, to, date }: { data: Tr
                   <div className="flex items-center gap-2">
                     <span className="rounded-md bg-ink px-1.5 py-0.5 font-mono text-xs font-bold text-white">{t.trainNumber}</span>
                     <CopyButton value={t.trainNumber} label="train number" />
-                    <h3 className="truncate font-semibold text-slate-900">{t.trainName}</h3>
+                    <h3 className="truncate font-semibold text-ink">{t.trainName}</h3>
                   </div>
                   <p className="mt-0.5 text-xs text-slate-500">{t.trainType ? `${t.trainType} · ` : ""}{t.source && t.destination ? `${t.source.code} → ${t.destination.code}` : ""}</p>
                 </div>
                 <RunDays days={t.runDays} />
               </div>
               <div className="mt-3 flex items-center gap-3">
-                <div><p className="text-xl font-bold tabular-nums">{t.departure || "—"}</p><p className="text-xs text-slate-500">{t.from.name ?? t.from.code} ({t.from.code})</p></div>
+                <div><p className="font-mono text-xl font-bold tabular-nums text-ink">{t.departure || "—"}</p><p className="text-xs text-slate-500">{t.from.name ?? t.from.code} ({t.from.code})</p></div>
                 <div className="flex-1 text-center text-xs text-slate-500">
                   <p>{fmtDuration(t.durationMinutes)}</p>
                   <div className="my-1 h-px bg-slate-300" />
                   <p>{t.intermediateStops !== undefined ? `${t.intermediateStops} stops` : " "}</p>
                 </div>
-                <div className="text-right"><p className="text-xl font-bold tabular-nums">{t.arrival || "—"}</p><p className="text-xs text-slate-500">{t.to.name ?? t.to.code} ({t.to.code})</p></div>
+                <div className="text-right">
+                  <p className="font-mono text-xl font-bold tabular-nums text-ink">
+                    {t.arrival || "—"}
+                    {t.arrivalDayOffset ? <sup className="ml-0.5 rounded bg-signal-soft px-1 font-mono text-[10px] font-bold text-amber-800">+{t.arrivalDayOffset}</sup> : null}
+                  </p>
+                  <p className="text-xs text-slate-500">{t.to.name ?? t.to.code} ({t.to.code})</p>
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                <div className="flex flex-wrap gap-1">
-                  {t.classes.length ? t.classes.map((c) => <span key={c} className={cx("rounded-md border px-1.5 py-0.5 text-xs font-semibold", cls === c ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-600")}>{c}</span>)
-                    : <span className="text-xs text-slate-400">Class information not available</span>}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {t.estimatedFare ? <span className="rounded-full bg-ink px-2.5 py-1 font-mono text-[12px] font-bold text-signal" title="Indicative fare from the provider">from ₹{t.estimatedFare.toLocaleString("en-IN")}</span> : null}
+                  {t.distanceKm ? <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[12px] text-slate-600">{t.distanceKm.toLocaleString("en-IN")} km</span> : null}
+                  {t.classes.map((c) => <span key={c} className={cx("rounded-md border px-1.5 py-0.5 text-xs font-semibold", cls === c ? "border-ink bg-signal-soft text-ink" : "border-slate-200 text-slate-600")}>{c}</span>)}
                 </div>
-                <div className="flex gap-3 text-sm font-medium">
-                  <Link href={`/train-schedule?train=${t.trainNumber}`} className="text-brand-700 hover:underline">Schedule</Link>
-                  <Link href={`/train-route?train=${t.trainNumber}`} className="text-brand-700 hover:underline">Route</Link>
-                  <Link href={`/train-status?train=${t.trainNumber}`} className="text-brand-700 hover:underline">Live status</Link>
+                <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
+                  <Link href={`/train-schedule?train=${t.trainNumber}`} className="text-slate-600 hover:text-ink hover:underline">Schedule</Link>
+                  <Link href={`/train-status?train=${t.trainNumber}`} className="text-slate-600 hover:text-ink hover:underline">Live status</Link>
+                  <Link
+                    href={`/seat-availability?${new URLSearchParams({ train: t.trainNumber, from: t.from.code, to: t.to.code, date })}`}
+                    className="rounded-full bg-ink px-3.5 py-1.5 text-white transition-colors hover:bg-signal hover:text-ink"
+                  >
+                    Seats & fare
+                  </Link>
                 </div>
               </div>
             </Card>
           ))}
-          <p className="text-xs text-slate-500">Times shown are scheduled timetable times. Seat availability and fares are not shown, so check IRCTC before booking.</p>
+          <p className="text-xs text-slate-500">Times are scheduled timetable times. Fares shown are indicative; open Seats & fare for availability and the exact fare by class.</p>
         </div>
       </div>
     </div>

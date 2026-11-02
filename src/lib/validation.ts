@@ -49,7 +49,10 @@ export function dayDiff(a: string, b: string): number {
   return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86_400_000);
 }
 
-/** Free-text query for suggestions: letters, digits, spaces and a few punctuation marks */
+/** IANA time zone name, e.g. "Asia/Kolkata" or "America/Argentina/Buenos_Aires" */
+export const TZ_RE = /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/;
+
+/** Free-text query for suggestions: letters, digits, spaces and a few punctuation marks (commas separate "place, city") */
 export function sanitizeQuery(input: string, max = 60): string {
-  return input.replace(/[^\p{L}\p{N}\s.\-'()]/gu, "").trim().slice(0, max);
+  return input.replace(/[^\p{L}\p{N}\s.,\-'()]/gu, "").replace(/\s*,\s*/g, ", ").replace(/\s+/g, " ").trim().slice(0, max);
 }

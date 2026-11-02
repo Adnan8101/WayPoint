@@ -44,7 +44,7 @@ export function FlightTrackerView() {
           skeleton={<ResultSkeleton rows={6} />}
           idle={
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <EmptyState title="Track a flight on the map">Enter a flight number to see its route, progress and, when the provider reports it, the aircraft&apos;s live position.</EmptyState>
+              <EmptyState art="tracker" title="Track a flight on the map">Enter a flight number to see its route, progress and, when the provider reports it, the aircraft&apos;s live position.</EmptyState>
               <RecentList kinds={["tracker", "flight"]} />
             </div>
           }
@@ -121,7 +121,7 @@ function TrackerMap({ flight }: { flight: Flight }) {
   }, [flight, dep, arr]);
 
   if (points.length < 2 && !flight.position) {
-    return <p className=" bg-slate-50 p-4 text-sm text-slate-600">Map unavailable: the provider did not return airport coordinates for this flight.</p>;
+    return <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">Map unavailable: the provider did not return airport coordinates for this flight.</p>;
   }
   const airborne = flight.status === "In Air" || flight.status === "Departed";
   return (
