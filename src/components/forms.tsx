@@ -317,6 +317,42 @@ export function SeatsForm({ initial }: { initial?: Record<string, string | undef
   );
 }
 
+/** Journey planner: where, when, how flexible, which class */
+export function PlannerForm({ initial }: { initial?: Record<string, string | undefined> }) {
+  const [from, setFrom] = useState(initial?.from ?? "");
+  const [to, setTo] = useState(initial?.to ?? "");
+  const [date, setDate] = useState(initial?.date || todayIST(1));
+  const [flex, setFlex] = useState(initial?.flex || "3");
+  const [cls, setCls] = useState(initial?.class || "ANY");
+  const [quota, setQuota] = useState(initial?.quota || "GN");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { busy, go } = useBusyNav();
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const f = placeOrCode(from);
+    const t = placeOrCode(to);
+    const errs: Record<string, string> = {};
+    if (!f) errs.from = "Where are you starting? A city or station.";
+    if (!t) errs.to = "Where are you going? A city or station.";
+    if (f && t && f.toLowerCase() === t.toLowerCase()) errs.to = "From and To must be different.";
+    if (!isValidDate(date)) errs.date = "Choose a valid date.";
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    go(`/planner?${new URLSearchParams({ from: f!, to: t!, date, flex, class: cls, quota })}`);
+  };
+  return (
+    <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <Autocomplete id="pl-from" label="From" value={from} onChange={setFrom} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.from} className="lg:col-span-2" />
+      <Autocomplete id="pl-to" label="To" value={to} onChange={setTo} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.to} className="lg:col-span-2" />
+      <DateField id="pl-date" label="Travel date" value={date} onChange={setDate} min={todayIST()} max={todayIST(120)} error={errors.date} className="lg:col-span-2" />
+      <SelectField id="pl-flex" label="Flexible by" value={flex} onChange={setFlex} options={[{ value: "0", label: "Exact date" }, { value: "1", label: "± 1 day" }, { value: "2", label: "± 2 days" }, { value: "3", label: "± 3 days" }, { value: "5", label: "± 5 days" }]} />
+      <SelectField id="pl-class" label="Class" value={cls} onChange={setCls} options={SEAT_CLASS_OPTIONS} />
+      <SelectField id="pl-quota" label="Quota" value={quota} onChange={setQuota} options={QUOTA_OPTIONS} />
+      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:col-span-3 lg:mt-[26px]"><SearchIcon width={16} height={16} /> Plan my journey</Button>
+    </form>
+  );
+}
+
 export function VacancyForm({ initial }: { initial?: Record<string, string | undefined> }) {
   const [train, setTrain] = useState(initial?.train ?? "");
   const [boarding, setBoarding] = useState(initial?.boarding ?? "");

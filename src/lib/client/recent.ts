@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 // Recent searches are kept only in this browser's localStorage. Only the search
 // query (e.g. a flight or PNR number) is stored, never the results.
 
-export type RecentKind = "flight" | "tracker" | "flight-search" | "airport" | "pnr" | "train" | "between" | "schedule" | "route" | "station" | "seats" | "vacancy";
+export type RecentKind = "flight" | "tracker" | "flight-search" | "airport" | "pnr" | "train" | "between" | "schedule" | "route" | "station" | "seats" | "vacancy" | "planner";
 
 export interface RecentItem {
   kind: RecentKind;

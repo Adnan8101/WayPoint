@@ -26,6 +26,7 @@ export const NAV = [
     items: [
       { label: "PNR Status", href: "/pnr-status", desc: "Booking and berth status" },
       { label: "Running Status", href: "/train-status", desc: "Where your train is now" },
+      { label: "Journey Planner", href: "/planner", desc: "Seats on your date, nearby dates or a change" },
       { label: "Seats & Fare", href: "/seat-availability", desc: "Availability calendar, every fare" },
       { label: "Vacant Berths", href: "/chart-vacancy", desc: "Free berths after charting" },
       { label: "Between Stations", href: "/trains-between-stations", desc: "Every train on a route" },

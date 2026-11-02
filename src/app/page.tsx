@@ -13,6 +13,7 @@ import { SITE } from "@/lib/site";
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
 const MORE: { title: string; line: string; href: string; icon: Icon }[] = [
+  { title: "Journey planner", line: "Trains with seats on your date, nearby dates or one change", href: "/planner", icon: RouteIcon },
   { title: "Seats & fare", line: "Availability across the coming days, every class's fare", href: "/seat-availability", icon: SeatIcon },
   { title: "Vacant berths", line: "Free berths after the chart, coach by coach", href: "/chart-vacancy", icon: BerthIcon },
   { title: "Trains between stations", line: "Every train on a route, with fares", href: "/trains-between-stations", icon: SearchIcon },
@@ -20,7 +21,6 @@ const MORE: { title: string; line: string; href: string; icon: Icon }[] = [
   { title: "Train schedule", line: "Full station-wise timetable", href: "/train-schedule", icon: ClockIcon },
   { title: "Airport boards", line: "Live arrivals and departures", href: "/airports", icon: BuildingIcon },
   { title: "Flight tracker", line: "Route and position on a map", href: "/flight-tracker", icon: MapIcon },
-  { title: "Train route", line: "Stops, distances and halts", href: "/train-route", icon: RouteIcon },
 ];
 
 const FACTS = [

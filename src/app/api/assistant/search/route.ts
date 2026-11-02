@@ -10,7 +10,7 @@ import { isValidDate, normalizeAirportCode, normalizeFlightNumber, normalizePnr,
 import type { AssistantIntent } from "@/lib/types";
 
 const TOOLS = [
-  "pnr", "train_status", "trains_between", "train_schedule", "train_route", "seats", "vacancy", "cancelled", "station",
+  "planner", "pnr", "train_status", "trains_between", "train_schedule", "train_route", "seats", "vacancy", "cancelled", "station",
   "flight_status", "flight_tracker", "flight_search", "airport", "weather", "unknown",
 ] as const;
 
@@ -63,7 +63,7 @@ function system(today: string) {
     `Today is ${weekday} ${today} (India time). Whenever the user mentions a day (today, tonight, tomorrow, a weekday, 'next Monday', a date), you MUST fill date as YYYY-MM-DD; a bare weekday means its next occurrence.`,
     "You MUST fill from and to whenever the user names two places, train with any train number or name, travelClass for AC/sleeper/chair car words, and quota for tatkal/ladies.",
     "Two places with no train number or name means trains_between for trains, or flight_search when they mention flying, flights or airports. Use seats only when a specific train is named.",
-    "Tools: pnr (PNR status); train_status (where is a running train); trains_between (trains from A to B); train_schedule (a train's timetable);",
+    "Tools: planner (wanting to travel or go somewhere by train on a date, finding trains with seats, flexible dates or a journey with a change; use this when they say they want to go, travel or reach a place); pnr (PNR status); train_status (where is a running train); trains_between (trains from A to B); train_schedule (a train's timetable);",
     "train_route (a train's stops on a map); seats (seat availability or fare for a train between two stations; AC means 3A unless stated, sleeper means SL, tatkal means quota TQ);",
     "vacancy (vacant berths after chart preparation); cancelled (cancelled trains today); station (a railway station's live board);",
     "flight_status (status of a flight number); flight_tracker (track a flight on a map); flight_search (flights between two airports); airport (an airport's board); weather (weather somewhere).",
@@ -119,6 +119,11 @@ async function toIntent(p: Parsed, today: string): Promise<AssistantIntent | nul
   const date = p.date && isValidDate(p.date) ? p.date : undefined;
   const qs = (o: Record<string, string | null | undefined>) => new URLSearchParams(Object.entries(o).filter(([, v]) => v) as [string, string][]).toString();
   switch (p.tool) {
+    case "planner": {
+      const from = placeText(p.from);
+      const to = placeText(p.to);
+      return { href: `/planner?${qs({ from, to, date: date ?? today, class: p.travelClass, quota: p.quota })}`, summary: to ? `a journey plan${from ? ` from ${from}` : ""} to ${to}` : "the journey planner" };
+    }
     case "pnr": {
       const pnr = normalizePnr(p.pnr ?? "");
       return { href: pnr ? `/pnr-status#pnr=${pnr}` : "/pnr-status", summary: pnr ? "PNR status" : "PNR status: enter your PNR" };

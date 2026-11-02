@@ -243,7 +243,57 @@ export interface TrainsBetweenResult {
   nextCount?: number;
 }
 
-export type TravelClass ="1A" | "2A" | "3A" | "3E" | "CC" | "EC" | "SL";
+// ---------- Journey planner ----------
+
+export interface PlanLeg {
+  trainNumber: string;
+  trainName: string;
+  from: { code: string; name?: string };
+  to: { code: string; name?: string };
+  /** Date the train leaves this leg's boarding station */
+  date: string;
+  departure: string;
+  arrival: string;
+  arrivalDate: string;
+  durationMinutes?: number;
+}
+
+export interface PlanConnection {
+  via: { code: string; name: string };
+  legs: [PlanLeg, PlanLeg];
+  waitMinutes: number;
+  totalMinutes: number;
+}
+
+export interface PlanDirect {
+  from: SearchedPlace;
+  to: SearchedPlace;
+  /** Every train on the route; `onDate` marks those leaving on the date asked for */
+  trains: (TrainBetween & { onDate: boolean })[];
+}
+
+export interface PlanConnections {
+  hubs: { code: string; name: string }[];
+  options: PlanConnection[];
+}
+
+/** One seat check in a planner batch */
+export interface SeatCheck {
+  train: string;
+  from: string;
+  to: string;
+  date: string;
+  class: string;
+}
+
+export interface SeatCheckResult {
+  key: string;
+  ok: boolean;
+  data?: AllClassesAvailability | SeatAvailability;
+  error?: string;
+}
+
+export type TravelClass = "1A" | "2A" | "3A" | "3E" | "CC" | "EC" | "SL";
 export type Quota = "GN" | "TQ" | "PT" | "LD";
 export type AvailabilityType = "AVAILABLE" | "RAC" | "WAITLIST" | "REGRET" | "OTHER";
 

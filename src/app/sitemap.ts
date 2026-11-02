@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const pages = [
     "", "/flight-status", "/flight-tracker", "/flight-search", "/airports", "/train-status", "/pnr-status",
     "/trains-between-stations", "/train-schedule", "/train-route", "/railway-stations", "/travel-information",
-    "/seat-availability", "/chart-vacancy", "/cancelled-trains",
+    "/planner", "/seat-availability", "/chart-vacancy", "/cancelled-trains",
   ];
   return pages.map((p) => ({ url: `${SITE.url}${p}`, changeFrequency: "weekly" as const, priority: p === "" ? 1 : 0.8 }));
 }

@@ -23,6 +23,7 @@ const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   "/train-route": RouteIcon,
   "/railway-stations": BuildingIcon,
   "/seat-availability": SeatIcon,
+  "/planner": RouteIcon,
   "/chart-vacancy": BerthIcon,
   "/cancelled-trains": BanIcon,
 };

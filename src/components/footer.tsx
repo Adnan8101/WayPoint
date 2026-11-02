@@ -11,6 +11,7 @@ const COLUMNS = [
       { label: "Flight Tracker", href: "/flight-tracker" },
       { label: "Train Status", href: "/train-status" },
       { label: "PNR Status", href: "/pnr-status" },
+      { label: "Journey Planner", href: "/planner" },
       { label: "Seats & Fare", href: "/seat-availability" },
       { label: "Vacant Berths", href: "/chart-vacancy" },
       { label: "Cancelled Trains", href: "/cancelled-trains" },

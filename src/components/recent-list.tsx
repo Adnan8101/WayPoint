@@ -18,6 +18,7 @@ const KIND_LABEL: Record<RecentKind, string> = {
   station: "Station",
   seats: "Seats",
   vacancy: "Berths",
+  planner: "Plan",
 };
 
 export function RecentList({ kinds, title = "Recent searches" }: { kinds?: RecentKind[]; title?: string }) {
