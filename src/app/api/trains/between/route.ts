@@ -1,35 +1,45 @@
 import { handle } from "@/lib/server/handler";
 import { ApiError } from "@/lib/server/errors";
 import { cached } from "@/lib/server/cache";
-import { withFallback } from "@/lib/server/fallback";
 import * as irctc from "@/lib/server/providers/irctcdev";
 import * as railradar from "@/lib/server/providers/railradar";
 import { resolveStations, type ResolvedPlace } from "@/lib/server/providers/station-resolver";
+import { addDays, weekdayOf } from "@/lib/dates";
 import { isValidDate, sanitizeQuery } from "@/lib/validation";
 import type { TrainBetween, TrainsBetweenResult } from "@/lib/types";
 
 /** Stations searched per side when a city has several */
 const PER_SIDE = 4;
+/** How far ahead "next available" looks */
+const LOOKAHEAD_DAYS = 14;
 const DAY = 24 * 60 * 60_000;
 
 const place = (p: ResolvedPlace, n: number) => ({ label: p.label, city: p.city && n > 1, stations: p.stations.slice(0, n).map((s) => ({ code: s.code, name: s.name })) });
 
-/** One station pair, cached for a day; RailRadar backs up a single-pair search */
-async function pair(from: string, to: string, date: string, backup: boolean) {
-  return (
-    await cached(`between:${from}:${to}:${date}`, DAY, () =>
-      withFallback(
-        { source: irctc.railSource, run: () => irctc.getTrainsBetween(from, to, date) },
-        { source: railradar.trainSource, run: () => railradar.getTrainsBetween(from, to, date), enabled: backup && Boolean(process.env.RAILRADAR_API_KEY) },
-      ),
-    )
-  ).value;
+type Pair = { data: TrainBetween[]; source: string; datedFor?: string };
+
+/**
+ * All trains for one station pair. irctc.dev is asked without a date, so one
+ * cached answer serves every date; RailRadar (backup) answers for one date only.
+ */
+async function pair(from: string, to: string, date: string, backup: boolean): Promise<Pair> {
+  try {
+    return (await cached(`between:${from}:${to}`, DAY, async () => ({ data: await irctc.getTrainsBetween(from, to), source: irctc.railSource }))).value;
+  } catch (err) {
+    const code = (err as ApiError)?.code;
+    if (!backup || !process.env.RAILRADAR_API_KEY || code === "NO_RESULTS" || code === "INVALID_STATION") throw err;
+    const data = (await cached(`between-rr:${from}:${to}:${date}`, DAY, () => railradar.getTrainsBetween(from, to, date))).value;
+    return { data, source: railradar.trainSource, datedFor: date };
+  }
 }
+
+/** Trains that leave the boarding station on `date` (runDays are already the boarding station's days) */
+const leavesOn = (t: TrainBetween, date: string) => t.runDays.length === 0 || t.runDays.includes(weekdayOf(date));
 
 /**
  * `from` and `to` may be station codes or place names. A city expands to its
- * main stations and every pair is searched, so "Mumbai" → "Delhi" finds trains
- * from CSMT, Mumbai Central, LTT and Bandra Terminus to every Delhi terminal.
+ * main stations and every pair is searched. When nothing leaves on the date,
+ * the response says which later date does.
  */
 export const GET = handle({ group: "train-between", limit: 20 }, async (url) => {
   const fromText = sanitizeQuery(url.searchParams.get("from") ?? "", 60);
@@ -46,12 +56,11 @@ export const GET = handle({ group: "train-between", limit: 20 }, async (url) => 
   if (!toCodes.length) throw new ApiError("INVALID_STATION", "From and To are the same place.");
 
   const pairs = fromCodes.flatMap((f) => toCodes.map((t) => [f, t] as const));
-  const single = pairs.length === 1;
-  const results = await Promise.allSettled(pairs.map(([f, t]) => pair(f, t, date, single)));
+  const results = await Promise.allSettled(pairs.map(([f, t]) => pair(f, t, date, pairs.length === 1)));
 
   // Most important stations first; a train seen from two pairs is kept once
   const seen = new Set<string>();
-  const trains: TrainBetween[] = [];
+  const all: (TrainBetween & { datedFor?: string })[] = [];
   let source = irctc.railSource;
   let outage = 0;
   for (const r of results) {
@@ -64,15 +73,28 @@ export const GET = handle({ group: "train-between", limit: 20 }, async (url) => 
     for (const t of r.value.data) {
       if (seen.has(t.trainNumber)) continue;
       seen.add(t.trainNumber);
-      trains.push(t);
+      all.push({ ...t, datedFor: r.value.datedFor });
     }
   }
-  if (!trains.length) {
+  if (!all.length) {
     if (outage === results.length) throw new ApiError("UNAVAILABLE", "Train information is unavailable right now. Please try again shortly.");
-    throw new ApiError("NO_RESULTS", `No trains were found from ${from.label} to ${to.label} on ${date}.`);
+    throw new ApiError("NO_RESULTS", `No trains run from ${from.label} to ${to.label}.`);
   }
-  trains.sort((a, b) => a.departure.localeCompare(b.departure));
+
+  const on = (d: string) => all.filter((t) => (t.datedFor ? t.datedFor === d : leavesOn(t, d)));
+  const strip = ({ datedFor: _d, ...t }: TrainBetween & { datedFor?: string }): TrainBetween => t;
+  const trains = on(date).map(strip).sort((a, b) => a.departure.localeCompare(b.departure));
 
   const data: TrainsBetweenResult = { from: place(from, fromCodes.length), to: place(to, toCodes.length), trains };
+  if (!trains.length) {
+    for (let k = 1; k <= LOOKAHEAD_DAYS; k++) {
+      const n = on(addDays(date, k)).length;
+      if (n) {
+        data.nextDate = addDays(date, k);
+        data.nextCount = n;
+        break;
+      }
+    }
+  }
   return { data, meta: { fetchedAt: Date.now(), cached: true, source, live: false } };
 });

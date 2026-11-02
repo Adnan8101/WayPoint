@@ -2,8 +2,8 @@ import { handle } from "@/lib/server/handler";
 import { ApiError } from "@/lib/server/errors";
 import { cached } from "@/lib/server/cache";
 import { generateJson, geminiSource } from "@/lib/server/google/gemini";
-import { getSchedule, searchTrains } from "@/lib/server/providers/irctcdev";
-import { resolveStations } from "@/lib/server/providers/station-resolver";
+import { searchTrains } from "@/lib/server/providers/irctcdev";
+import { resolveStations, stationOnTrain } from "@/lib/server/providers/station-resolver";
 import { searchAirports } from "@/lib/server/providers/ourairports";
 import { todayIST } from "@/lib/dates";
 import { isValidDate, normalizeAirportCode, normalizeFlightNumber, normalizePnr, normalizeStationCode, normalizeTrainNumber, sanitizeQuery } from "@/lib/validation";
@@ -78,19 +78,8 @@ async function stationCode(text?: string | null): Promise<string | undefined> {
   return (await resolveStations(text).catch(() => undefined))?.stations[0]?.code;
 }
 
-/** For a named train, the stop that serves the place: "Mumbai" on train 12952 → whichever Mumbai station it calls at */
-async function stopOn(train: string | undefined, text?: string | null): Promise<string | undefined> {
-  if (!text) return undefined;
-  const place = await resolveStations(text).catch(() => undefined);
-  if (!place) return undefined;
-  if (train) {
-    const sched = await cached(`schedule:${train}:stops`, 7 * 24 * 60 * 60_000, () => getSchedule(train)).then((r) => r.value).catch(() => undefined);
-    const codes = new Set(place.stations.map((s) => s.code));
-    const hit = sched?.stops.find((s) => codes.has(s.code));
-    if (hit) return hit.code;
-  }
-  return place.stations[0]?.code;
-}
+/** For a named train, the stop that serves the place */
+const stopOn = (train: string | undefined, text?: string | null) => (text ? stationOnTrain(train, text) : Promise.resolve(undefined));
 
 /** Plain text kept for searches that expand a city themselves */
 const placeText = (text?: string | null) => (text ? sanitizeQuery(text, 60) || undefined : undefined);
@@ -152,8 +141,9 @@ async function toIntent(p: Parsed, today: string): Promise<AssistantIntent | nul
     }
     case "seats": {
       const train = await trainNumber(p.train);
-      const [from, to] = await Promise.all([stopOn(train, p.from), stopOn(train, p.to)]);
-      return { href: `/seat-availability?${qs({ train, from, to, date, class: p.travelClass, quota: p.quota })}`, summary: train ? `Seats and fare on ${train}` : "Seats and fare" };
+      // With a train, use the stops it makes; without one, search the whole route (cities included)
+      const [from, to] = train ? await Promise.all([stopOn(train, p.from), stopOn(train, p.to)]) : [placeText(p.from), placeText(p.to)];
+      return { href: `/seat-availability?${qs({ train, from, to, date, class: p.travelClass, quota: p.quota })}`, summary: train ? `seats and fare on ${train}` : from && to ? `trains and seats from ${from} to ${to}` : "Seats and fare" };
     }
     case "vacancy": {
       const train = await trainNumber(p.train);

@@ -273,9 +273,19 @@ export async function getLiveStatus(trainNo: string, date: string): Promise<Trai
 
 // ---------- Trains between stations ----------
 
-export async function getTrainsBetween(from: string, to: string, date: string): Promise<TrainBetween[]> {
-  const none = new ApiError("NO_RESULTS", `No trains were found between ${from} and ${to} on ${date}.`);
-  const list = arr(get(await call(`/api/v1/trains/search?from=${from}&to=${to}&date=${date}`, none), "data"))
+/** Running days shifted from the train's origin to the boarding station (+offset days) */
+function boardingDays(v: unknown, offset: number): string[] {
+  const set = new Set(runDays(v).map((d) => DAY_NAMES[(DAY_NAMES.indexOf(d) + offset) % 7]));
+  return DAY_NAMES.filter((d) => set.has(d));
+}
+
+/**
+ * Every train on a route. Without a date the provider returns all of them with
+ * their running days, so one call serves any date (see trainsOnDate).
+ */
+export async function getTrainsBetween(from: string, to: string, date?: string): Promise<TrainBetween[]> {
+  const none = new ApiError("NO_RESULTS", `No trains were found between ${from} and ${to}${date ? ` on ${date}` : ""}.`);
+  const list = arr(get(await call(`/api/v1/trains/search?from=${from}&to=${to}${date ? `&date=${date}` : ""}`, none), "data"))
     .map((t) => ({
       trainNumber: str(t, "trainNo") ?? "",
       trainName: titleCase(str(t, "trainName")),
@@ -288,7 +298,8 @@ export async function getTrainsBetween(from: string, to: string, date: string): 
       arrival: hhmm(get(t, "arrival")) ?? "",
       durationMinutes: num(t, "durationMin"),
       intermediateStops: num(t, "halts"),
-      runDays: runDays(get(t, "runningDays")),
+      // Days it leaves *your* station: the provider counts them at the train's origin
+      runDays: boardingDays(get(t, "runningDays"), num(t, "fromStationDayOffset") ?? 0),
       classes: arr(get(t, "classes")).map(String),
       arrivalDayOffset: (num(t, "toStationDayOffset") ?? 0) - (num(t, "fromStationDayOffset") ?? 0),
       distanceKm: num(t, "distance"),

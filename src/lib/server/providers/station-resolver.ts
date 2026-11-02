@@ -2,7 +2,7 @@ import "server-only";
 import type { Station } from "@/lib/types";
 import { cached } from "../cache";
 import { generateJson } from "../google/gemini";
-import { getStation, searchStations } from "./irctcdev";
+import { getSchedule, getStation, searchStations } from "./irctcdev";
 import { normalizeStationCode } from "@/lib/validation";
 
 // Turns what someone typed ("NDLS", "New Delhi", "Mumbai", "मुंबई") into the IRCTC
@@ -78,4 +78,25 @@ export async function resolveStations(text: string): Promise<ResolvedPlace | und
   const key = text.trim();
   if (!key) return undefined;
   return (await cached(`stres:${key.toLowerCase()}`, 30 * 24 * 60 * 60_000, () => resolve(key))).value;
+}
+
+/** The train's timetable, cached for a week */
+export async function trainStops(train: string) {
+  return (await cached(`schedule:${train}:stops`, 7 * 24 * 60 * 60_000, () => getSchedule(train))).value;
+}
+
+/**
+ * The stop on a given train that serves a place: "Mumbai" on 12952 is whichever
+ * Mumbai station that train calls at. Falls back to the place's main station.
+ */
+export async function stationOnTrain(train: string | undefined, text: string): Promise<string | undefined> {
+  const place = await resolveStations(text).catch(() => undefined);
+  if (!place) return undefined;
+  if (train) {
+    const sched = await trainStops(train).catch(() => undefined);
+    const codes = new Set(place.stations.map((s) => s.code));
+    const hit = sched?.stops.find((s) => codes.has(s.code));
+    if (hit) return hit.code;
+  }
+  return place.stations[0]?.code;
 }

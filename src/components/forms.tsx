@@ -267,39 +267,52 @@ export const QUOTA_OPTIONS = [
   { value: "LD", label: "Ladies" },
 ];
 
+/** Class choices for seat searches, led by "any class" */
+export const SEAT_CLASS_OPTIONS = [{ value: "ANY", label: "Any class" }, ...CLASS_OPTIONS];
+
+/**
+ * Seats & fare: give a train (name or number) to see its calendar, or leave it
+ * empty to see every train on the route. From/To take a station or a city.
+ */
 export function SeatsForm({ initial }: { initial?: Record<string, string | undefined> }) {
   const [train, setTrain] = useState(initial?.train ?? "");
   const [from, setFrom] = useState(initial?.from ?? "");
   const [to, setTo] = useState(initial?.to ?? "");
   const [date, setDate] = useState(initial?.date ?? todayIST(1));
-  const [cls, setCls] = useState(initial?.class ?? "3A");
+  const [cls, setCls] = useState(initial?.class ?? "ANY");
   const [quota, setQuota] = useState(initial?.quota ?? "GN");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { busy, go } = useBusyNav();
-  const submit = async (e: FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault();
-    const n = extractTrainNumber(train);
-    const f = await resolveStation(from);
-    const t = await resolveStation(to);
+    const typedTrain = train.trim();
+    const n = typedTrain ? extractTrainNumber(typedTrain) : null;
+    const f = placeOrCode(from);
+    const t = placeOrCode(to);
     const errs: Record<string, string> = {};
-    if (!n) errs.train = "Enter a 5-digit train number, or pick one from the suggestions.";
-    if (!f) errs.from = "Choose a station on the train's route.";
-    if (!t) errs.to = "Choose a station on the train's route.";
-    if (f && t && f === t) errs.to = "From and To must be different.";
+    if (typedTrain && !n) errs.train = "Pick the train from the suggestions, or clear this to search the whole route.";
+    if (!f) errs.from = "Enter where you board: a station or a city.";
+    if (!t) errs.to = "Enter where you're going: a station or a city.";
+    if (f && t && f.toLowerCase() === t.toLowerCase()) errs.to = "From and To must be different.";
     if (!isValidDate(date)) errs.date = "Choose a valid date.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    go(`/seat-availability?${new URLSearchParams({ train: n!, from: f!, to: t!, date, class: cls, quota })}`);
+    const q = new URLSearchParams({ from: f!, to: t!, date, class: cls, quota });
+    if (n) q.set("train", n);
+    go(`/seat-availability?${q}`);
   };
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-6">
-      <Autocomplete id="sa-train" label="Train number or name" value={train} onChange={setTrain} suggest={suggestTrains} minChars={2} placeholder="Train number or name" error={errors.train} className="sm:col-span-2" />
-      <Autocomplete id="sa-from" label="From station" value={from} onChange={setFrom} suggest={suggestStations} placeholder="Station name or code" error={errors.from} className="lg:col-span-2" />
-      <Autocomplete id="sa-to" label="To station" value={to} onChange={setTo} suggest={suggestStations} placeholder="Station name or code" error={errors.to} className="lg:col-span-2" />
+      <Autocomplete
+        id="sa-train" label="Train name or number (optional)" value={train} onChange={setTrain} suggest={suggestTrains} minChars={2}
+        placeholder="Leave empty for every train" error={errors.train} hint="Or search the whole route below" className="sm:col-span-2"
+      />
+      <Autocomplete id="sa-from" label="From" value={from} onChange={setFrom} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.from} className="lg:col-span-2" />
+      <Autocomplete id="sa-to" label="To" value={to} onChange={setTo} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.to} className="lg:col-span-2" />
       <DateField id="sa-date" label="Journey date" value={date} onChange={setDate} min={todayIST()} max={todayIST(120)} error={errors.date} className="lg:col-span-2" />
-      <SelectField id="sa-class" label="Class" value={cls} onChange={setCls} options={CLASS_OPTIONS} />
+      <SelectField id="sa-class" label="Class" value={cls} onChange={setCls} options={SEAT_CLASS_OPTIONS} />
       <SelectField id="sa-quota" label="Quota" value={quota} onChange={setQuota} options={QUOTA_OPTIONS} />
-      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:mt-[26px]"><SeatIcon width={17} height={17} /> Check seats & fare</Button>
+      <Button type="submit" loading={busy} className="h-12 sm:col-span-2 lg:mt-[26px]"><SeatIcon width={17} height={17} /> {train.trim() ? "Check seats & fare" : "Find trains & seats"}</Button>
     </form>
   );
 }

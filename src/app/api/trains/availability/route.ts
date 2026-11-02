@@ -1,28 +1,31 @@
 import { handle } from "@/lib/server/handler";
 import { ApiError } from "@/lib/server/errors";
-import { cached } from "@/lib/server/cache";
-import { getAvailability, railSource } from "@/lib/server/providers/irctcdev";
+import { railSource } from "@/lib/server/providers/irctcdev";
+import { allClasses, availabilityNext, journeyStations } from "@/lib/server/seats";
 import { todayIST } from "@/lib/dates";
-import { dayDiff, isValidDate, normalizeStationCode, normalizeTrainNumber } from "@/lib/validation";
+import { dayDiff, isValidDate, normalizeTrainNumber, sanitizeQuery } from "@/lib/validation";
 import { parseClass, parseQuota } from "../params";
 
+/**
+ * Seat availability for one train. `from`/`to` may be codes or place names
+ * (resolved to the stops this train makes). `class=ANY` checks every class.
+ * If the train doesn't run on the date, the next run is used and flagged.
+ */
 export const GET = handle({ group: "train-availability", limit: 20 }, async (url) => {
   const p = url.searchParams;
   const train = normalizeTrainNumber(p.get("train") ?? "");
   if (!train) throw new ApiError("INVALID_TRAIN", "Enter a valid 5-digit train number.");
-  const from = normalizeStationCode(p.get("from") ?? "");
-  const to = normalizeStationCode(p.get("to") ?? "");
-  if (!from || !to || from === to) throw new ApiError("INVALID_STATION", "Choose two different stations on the train's route.");
+  const fromText = sanitizeQuery(p.get("from") ?? "", 60);
+  const toText = sanitizeQuery(p.get("to") ?? "", 60);
+  if (fromText.length < 2 || toText.length < 2) throw new ApiError("INVALID_STATION", "Choose where you board and where you get off.");
   const date = p.get("date") ?? "";
   if (!isValidDate(date)) throw new ApiError("INVALID_INPUT", "Enter a valid journey date.");
   const ahead = dayDiff(todayIST(), date);
   if (ahead < 0 || ahead > 120) throw new ApiError("INVALID_INPUT", "Seat availability covers journeys from today up to 120 days ahead.");
-  const cls = parseClass(p.get("class"), "3A");
   const quota = parseQuota(p.get("quota"));
+  const { from, to } = await journeyStations(train, fromText, toText);
 
-  // Seats move fast; a short cache only absorbs repeat clicks
-  const { value, fetchedAt, cached: hit } = await cached(`avail:${train}:${from}:${to}:${date}:${cls}:${quota}`, 2 * 60_000, () =>
-    getAvailability(train, from, to, date, cls, quota),
-  );
-  return { data: value, meta: { fetchedAt, cached: hit, source: railSource, live: true } };
+  const wantsAll = (p.get("class") ?? "").toUpperCase() === "ANY";
+  const data = wantsAll ? await allClasses(train, from, to, date, quota) : await availabilityNext(train, from, to, date, parseClass(p.get("class"), "3A"), quota);
+  return { data, meta: { fetchedAt: Date.now(), cached: false, source: railSource, live: true } };
 });

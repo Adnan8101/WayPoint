@@ -236,7 +236,11 @@ export interface SearchedPlace {
 export interface TrainsBetweenResult {
   from: SearchedPlace;
   to: SearchedPlace;
+  /** Trains leaving on the requested date */
   trains: TrainBetween[];
+  /** When none leave that day: the next date that has trains on this route */
+  nextDate?: string;
+  nextCount?: number;
 }
 
 export type TravelClass ="1A" | "2A" | "3A" | "3E" | "CC" | "EC" | "SL";
@@ -251,6 +255,27 @@ export interface SeatAvailability {
   travelClass: string;
   quota: string;
   days: { date: string; status: string; type: AvailabilityType }[];
+  /** Set when the train doesn't run on the date asked for and the next run was used instead */
+  requestedDate?: string;
+}
+
+/** One class on a train: its fare and seat availability */
+export interface ClassAvailability {
+  travelClass: string;
+  className: string;
+  fare?: number;
+  days: SeatAvailability["days"];
+  error?: string;
+}
+
+export interface AllClassesAvailability {
+  trainNumber: string;
+  trainName: string;
+  from: string;
+  to: string;
+  quota: string;
+  requestedDate?: string;
+  classes: ClassAvailability[];
 }
 
 export interface FareClass {

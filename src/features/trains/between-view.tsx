@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ApiMeta, TrainsBetweenResult } from "@/lib/types";
 import { useApi } from "@/lib/client/use-api";
@@ -15,6 +15,7 @@ import { ApiResult } from "@/components/api-result";
 import { Card, CopyButton, SelectField, ShareButton } from "@/components/ui";
 import { RecentList } from "@/components/recent-list";
 import { RunDays } from "./train-parts";
+import { NoTrains } from "./seats-view";
 
 export function BetweenView() {
   const params = useSearchParams();
@@ -66,6 +67,7 @@ const inSlot = (t: string, slot: string) => slot === "all" || (t && Math.floor(N
 
 function Results({ result, meta, refreshing, refresh, from, to, date }: { result: TrainsBetweenResult; meta: ApiMeta; refreshing: boolean; refresh: () => void; from: string; to: string; date: string }) {
   const data = result.trains;
+  const router = useRouter();
   const [board, setBoard] = useState("all");
   const [alight, setAlight] = useState("all");
   const [dep, setDep] = useState("all");
@@ -95,6 +97,15 @@ function Results({ result, meta, refreshing, refresh, from, to, date }: { result
     for (const t of data) m.set(t[side].code, t[side].name ?? t[side].code);
     return [...m].map(([value, name]) => ({ value, label: `${name} (${value})` }));
   };
+
+  if (!data.length) {
+    return (
+      <div className="space-y-4">
+        <h2 className="font-display text-[30px] font-bold text-ink">{result.from.label} <span className="text-signal">→</span> {result.to.label}</h2>
+        <NoTrains r={result} date={date} onDate={(d) => router.push(`/trains-between-stations?${new URLSearchParams({ from, to, date: d })}`, { scroll: false })} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -127,7 +138,7 @@ function Results({ result, meta, refreshing, refresh, from, to, date }: { result
           <SelectField id="f-arr" label="Arrival time" value={arr} onChange={setArr} options={SLOTS} />
           <SelectField id="f-type" label="Train type" value={type} onChange={setType} options={[{ value: "all", label: "All types" }, ...types.map((t) => ({ value: t, label: t }))]} />
           <SelectField id="f-dur" label="Journey duration" value={maxDur} onChange={setMaxDur} options={[{ value: "all", label: "Any duration" }, ...[6, 12, 18, 24, 36].map((h) => ({ value: String(h), label: `Up to ${h} hours` }))]} />
-          <SelectField id="f-cls" label="Travel class" value={cls} onChange={setCls} options={[{ value: "all", label: "All classes" }, ...classes.map((c) => ({ value: c, label: c }))]} />
+          <SelectField id="f-cls" label="Travel class" value={cls} onChange={setCls} options={[{ value: "all", label: "Any class" }, ...classes.map((c) => ({ value: c, label: c }))]} />
         </aside>
         <div className="space-y-3">
           {rows.length === 0 && <EmptyState title="No trains match these filters"><button type="button" onClick={reset} className="font-medium text-brand-700 underline">Reset filters</button></EmptyState>}

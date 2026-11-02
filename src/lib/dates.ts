@@ -17,3 +17,15 @@ export function todayLocal(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86_400_000);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+/** "YYYY-MM-DD" plus n days (UTC arithmetic, so the date never shifts) */
+export function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** "Mon".."Sun" for a "YYYY-MM-DD" date */
+export function weekdayOf(date: string): string {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+}
