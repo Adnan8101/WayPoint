@@ -226,7 +226,20 @@ export interface TrainBetween {
   estimatedFare?: number;
 }
 
-export type TravelClass = "1A" | "2A" | "3A" | "3E" | "CC" | "EC" | "SL";
+/** A place as searched: one station, or every main station of a city */
+export interface SearchedPlace {
+  label: string;
+  city: boolean;
+  stations: { code: string; name: string }[];
+}
+
+export interface TrainsBetweenResult {
+  from: SearchedPlace;
+  to: SearchedPlace;
+  trains: TrainBetween[];
+}
+
+export type TravelClass ="1A" | "2A" | "3A" | "3E" | "CC" | "EC" | "SL";
 export type Quota = "GN" | "TQ" | "PT" | "LD";
 export type AvailabilityType = "AVAILABLE" | "RAC" | "WAITLIST" | "REGRET" | "OTHER";
 

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Autocomplete, suggestAirports, suggestStations, suggestTrains } from "./autocomplete";
+import { Autocomplete, suggestAirports, suggestStations, suggestStationsOrPlace, suggestTrains } from "./autocomplete";
 import { Button, Field, SelectField } from "./ui";
 import { DateField } from "./date-field";
 import { ScanTicket } from "@/features/assistant/scan-ticket";
@@ -27,6 +27,13 @@ async function resolveCode(v: string, normalize: (s: string) => string | null, s
 }
 const resolveStation = (v: string) => resolveCode(v, normalizeStationCode, suggestStations);
 const resolveAirport = (v: string) => resolveCode(v, normalizeAirportCode, suggestAirports);
+
+/** A picked or typed station code stays a code; any other text is a place the server expands (e.g. a city) */
+function placeOrCode(v: string): string | null {
+  const text = v.trim();
+  if (text.length < 2) return null;
+  return /^[A-Z]{1,5}$/.test(text) ? text : text.slice(0, 60);
+}
 
 function useBusyNav() {
   const router = useRouter();
@@ -199,25 +206,25 @@ export function TrainsBetweenForm({ initial }: { initial?: { from?: string; to?:
   const { busy, go } = useBusyNav();
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const f = await resolveStation(from);
-    const t = await resolveStation(to);
+    const f = placeOrCode(from);
+    const t = placeOrCode(to);
     const errs: Record<string, string> = {};
-    if (!f) errs.from = "Choose a valid station name or code.";
-    if (!t) errs.to = "Choose a valid station name or code.";
+    if (!f) errs.from = "Enter a station or a city.";
+    if (!t) errs.to = "Enter a station or a city.";
     if (f && t && f === t) errs.to = "From and To must be different.";
     if (!isValidDate(date)) errs.date = "Choose a valid date.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    go(`/trains-between-stations?from=${f}&to=${t}&date=${date}`);
+    go(`/trains-between-stations?${new URLSearchParams({ from: f!, to: t!, date })}`);
   };
   return (
     <form onSubmit={submit} noValidate className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_1fr_200px_auto]">
-      <Autocomplete id="tb-from" label="From station" value={from} onChange={setFrom} suggest={suggestStations} placeholder="Station name or code" error={errors.from} />
+      <Autocomplete id="tb-from" label="From" value={from} onChange={setFrom} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.from} />
       <button type="button" onClick={() => { setFrom(to); setTo(from); }} aria-label="Swap stations"
         className="group hidden size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-[var(--shadow-card)] transition-all duration-500 ease-[var(--ease-spring)] hover:rotate-180 hover:border-ink hover:bg-ink hover:text-signal lg:mt-[26px] lg:flex">
         <SwapIcon width={18} height={18} />
       </button>
-      <Autocomplete id="tb-to" label="To station" value={to} onChange={setTo} suggest={suggestStations} placeholder="Station name or code" error={errors.to} />
+      <Autocomplete id="tb-to" label="To" value={to} onChange={setTo} suggest={suggestStationsOrPlace} placeholder="City, station or code" error={errors.to} />
       <DateField id="tb-date" label="Journey date" value={date} onChange={setDate} min={todayIST()} max={todayIST(120)} error={errors.date} />
       <Button type="submit" loading={busy} className="h-12 sm:mt-[26px]"><SearchIcon width={16} height={16} /> Find trains</Button>
     </form>

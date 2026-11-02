@@ -75,7 +75,7 @@ export function SplitFlap({ text, length, className, tileClassName }: { text: st
     <span className={cx("inline-flex gap-[2px]", className)}>
       <span className="sr-only">{key.trim()}</span>
       {shown.map((ch, i) => (
-        <span key={i} aria-hidden data-flipping={flipping[i] || undefined} className={cx("flap rounded-[3px] font-mono", tileClassName)}>
+        <span key={i} aria-hidden data-flipping={flipping[i] || undefined} className={cx("flap select-none rounded-[3px] font-mono", tileClassName)}>
           {ch === " " ? " " : ch}
         </span>
       ))}

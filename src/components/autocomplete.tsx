@@ -162,6 +162,16 @@ export async function suggestStations(q: string): Promise<Suggestion[]> {
   return list.slice(0, 8).map((st) => ({ value: st.code, primary: st.name, secondary: st.state || undefined, badge: st.code }));
 }
 
+/** Station suggestions plus "all main stations" for the place typed, for searches that accept a city */
+export async function suggestStationsOrPlace(q: string): Promise<Suggestion[]> {
+  const s = q.trim();
+  const list = await suggestStations(s);
+  // A typed code stays a station search; words get the whole-place option first
+  if (s.length < 3 || /^[A-Z]{1,5}$/.test(s) || list.some((x) => x.value === s.toUpperCase())) return list;
+  const label = s.replace(/(^|\s)(\p{L})/gu, (_, sp: string, c: string) => sp + c.toUpperCase());
+  return [{ value: label, primary: `${label}: all main stations`, secondary: "Searches every major station there", badge: "ALL" }, ...list].slice(0, 8);
+}
+
 export async function suggestAirports(q: string): Promise<Suggestion[]> {
   const s = q.trim();
   if (s.length < 2) return [];

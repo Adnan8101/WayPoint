@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { ApiMeta, TrainBetween } from "@/lib/types";
+import type { ApiMeta, TrainsBetweenResult } from "@/lib/types";
 import { useApi } from "@/lib/client/use-api";
 import { addRecent } from "@/lib/client/recent";
 import { todayIST } from "@/lib/dates";
@@ -25,10 +25,10 @@ export function BetweenView() {
     () => (from && to && date ? { url: `/api/trains/between?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}` } : null),
     [from, to, date],
   );
-  const { state, refresh } = useApi<TrainBetween[]>(req);
+  const { state, refresh } = useApi<TrainsBetweenResult>(req);
 
   useEffect(() => {
-    if (state.status === "success") addRecent({ kind: "between", label: `${from} → ${to} · ${fmtDate(date, { day: "numeric", month: "short" })}`, href: `/trains-between-stations?from=${from}&to=${to}&date=${date}` });
+    if (state.status === "success") addRecent({ kind: "between", label: `${state.data.from.label} → ${state.data.to.label} · ${fmtDate(date, { day: "numeric", month: "short" })}`, href: `/trains-between-stations?${new URLSearchParams({ from, to, date })}` });
   }, [state.status, from, to, date]);
 
   return (
@@ -48,7 +48,7 @@ export function BetweenView() {
             </div>
           }
         >
-          {(data, meta, refreshing) => <Results data={data} meta={meta} refreshing={refreshing} refresh={refresh} from={from} to={to} date={date} />}
+          {(result, meta, refreshing) => <Results result={result} meta={meta} refreshing={refreshing} refresh={refresh} from={from} to={to} date={date} />}
         </ApiResult>
       </Section>
     </>
@@ -64,7 +64,10 @@ const SLOTS = [
 ];
 const inSlot = (t: string, slot: string) => slot === "all" || (t && Math.floor(Number(t.slice(0, 2)) / 6) * 6 === Number(slot));
 
-function Results({ data, meta, refreshing, refresh, from, to, date }: { data: TrainBetween[]; meta: ApiMeta; refreshing: boolean; refresh: () => void; from: string; to: string; date: string }) {
+function Results({ result, meta, refreshing, refresh, from, to, date }: { result: TrainsBetweenResult; meta: ApiMeta; refreshing: boolean; refresh: () => void; from: string; to: string; date: string }) {
+  const data = result.trains;
+  const [board, setBoard] = useState("all");
+  const [alight, setAlight] = useState("all");
   const [dep, setDep] = useState("all");
   const [arr, setArr] = useState("all");
   const [type, setType] = useState("all");
@@ -81,25 +84,45 @@ function Results({ data, meta, refreshing, refresh, from, to, date }: { data: Tr
         .filter((t) => type === "all" || t.trainType === type)
         .filter((t) => cls === "all" || t.classes.includes(cls))
         .filter((t) => maxDur === "all" || (t.durationMinutes ?? Infinity) <= Number(maxDur) * 60)
+        .filter((t) => (board === "all" || t.from.code === board) && (alight === "all" || t.to.code === alight))
         .sort((a, b) => (sort === "dur" ? (a.durationMinutes ?? 1e9) - (b.durationMinutes ?? 1e9) : (sort === "dep" ? a.departure : a.arrival).localeCompare(sort === "dep" ? b.departure : b.arrival))),
-    [data, dep, arr, type, cls, maxDur, sort],
+    [data, dep, arr, type, cls, maxDur, sort, board, alight],
   );
-  const reset = () => { setDep("all"); setArr("all"); setType("all"); setCls("all"); setMaxDur("all"); };
+  const reset = () => { setDep("all"); setArr("all"); setType("all"); setCls("all"); setMaxDur("all"); setBoard("all"); setAlight("all"); };
+  // Stations that actually appear in the results, for the boarding/alighting filters
+  const stationsOf = (side: "from" | "to") => {
+    const m = new Map<string, string>();
+    for (const t of data) m.set(t[side].code, t[side].name ?? t[side].code);
+    return [...m].map(([value, name]) => ({ value, label: `${name} (${value})` }));
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-display text-[30px] font-bold text-ink">{data[0]?.from.name ?? from} <span className="text-signal">→</span> {data[0]?.to.name ?? to}</h2>
+          <h2 className="font-display text-[30px] font-bold text-ink">{result.from.label} <span className="text-signal">→</span> {result.to.label}</h2>
           <p className="text-sm text-slate-600">{rows.length} of {data.length} trains · {fmtDate(date, { weekday: "long", day: "numeric", month: "long" })}</p>
+          {(result.from.city || result.to.city) && (
+            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12.5px] text-slate-500">
+              <span>Searched every main station:</span>
+              {[...result.from.stations.map((x) => ({ ...x, side: "from" })), ...result.to.stations.map((x) => ({ ...x, side: "to" }))].map((x, i) => (
+                <span key={`${x.side}${x.code}`} className="inline-flex items-center gap-1">
+                  {i === result.from.stations.length && <span className="mx-1 text-signal">→</span>}
+                  <span title={x.name} className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11.5px] font-semibold text-ink">{x.code}</span>
+                </span>
+              ))}
+            </p>
+          )}
         </div>
-        <ShareButton title={`Trains from ${from} to ${to}`} />
+        <ShareButton title={`Trains from ${result.from.label} to ${result.to.label}`} />
       </div>
       <Freshness meta={meta} onRefresh={refresh} refreshing={refreshing} />
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <aside aria-label="Filters" className="space-y-3 rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-card)] lg:sticky lg:top-24 lg:self-start">
           <div className="flex items-center justify-between"><h3 className="font-display text-[22px] font-bold text-ink">Filters</h3><button type="button" onClick={reset} className="text-xs font-medium text-brand-700">Reset</button></div>
           <SelectField id="f-sort" label="Sort by" value={sort} onChange={(v) => setSort(v as typeof sort)} options={[{ value: "dep", label: "Departure" }, { value: "arr", label: "Arrival" }, { value: "dur", label: "Duration" }]} />
+          {stationsOf("from").length > 1 && <SelectField id="f-board" label="Boarding station" value={board} onChange={setBoard} options={[{ value: "all", label: "Any station" }, ...stationsOf("from")]} />}
+          {stationsOf("to").length > 1 && <SelectField id="f-alight" label="Arriving at" value={alight} onChange={setAlight} options={[{ value: "all", label: "Any station" }, ...stationsOf("to")]} />}
           <SelectField id="f-dep" label="Departure time" value={dep} onChange={setDep} options={SLOTS} />
           <SelectField id="f-arr" label="Arrival time" value={arr} onChange={setArr} options={SLOTS} />
           <SelectField id="f-type" label="Train type" value={type} onChange={setType} options={[{ value: "all", label: "All types" }, ...types.map((t) => ({ value: t, label: t }))]} />

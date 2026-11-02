@@ -27,7 +27,7 @@ export function LiveTicker() {
             <span key={i} className="flex items-center gap-3 whitespace-nowrap">
               <TrainIcon width={16} height={16} />
               <span className="font-mono text-[14px] font-bold tracking-wider">{t.trainNumber}</span>
-              <span className="text-[14px] font-medium text-ink/70">{t.trainName}</span>
+              <span className="text-[14px] font-medium text-ink/75">{t.source} <span className="text-ink/40">→</span> {t.destination}</span>
               <span className="rounded-full bg-ink/10 px-2 py-0.5 font-mono text-[11px] font-semibold uppercase">
                 {t.partial ? `Part · ${t.cancelledFrom ?? ""}→${t.cancelledTo ?? ""}` : "Cancelled"}
               </span>
