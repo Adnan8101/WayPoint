@@ -2,7 +2,8 @@ import { handle } from "@/lib/server/handler";
 import { ApiError } from "@/lib/server/errors";
 import { cached } from "@/lib/server/cache";
 import { generateJson, geminiSource } from "@/lib/server/google/gemini";
-import { searchStations, searchTrains } from "@/lib/server/providers/irctcdev";
+import { getSchedule, searchTrains } from "@/lib/server/providers/irctcdev";
+import { resolveStations } from "@/lib/server/providers/station-resolver";
 import { searchAirports } from "@/lib/server/providers/ourairports";
 import { todayIST } from "@/lib/dates";
 import { isValidDate, normalizeAirportCode, normalizeFlightNumber, normalizePnr, normalizeStationCode, normalizeTrainNumber, sanitizeQuery } from "@/lib/validation";
@@ -71,12 +72,42 @@ function system(today: string) {
   ].join(" ");
 }
 
+/** The single most important station for a place (codes and names both work) */
 async function stationCode(text?: string | null): Promise<string | undefined> {
   if (!text) return undefined;
-  const code = normalizeStationCode(text);
-  const hits = await searchStations(text).catch(() => []);
-  if (code && hits.some((h) => h.code === code)) return code;
-  return hits[0]?.code ?? (code && text.trim().length <= 5 ? code : undefined);
+  return (await resolveStations(text).catch(() => undefined))?.stations[0]?.code;
+}
+
+/** For a named train, the stop that serves the place: "Mumbai" on train 12952 → whichever Mumbai station it calls at */
+async function stopOn(train: string | undefined, text?: string | null): Promise<string | undefined> {
+  if (!text) return undefined;
+  const place = await resolveStations(text).catch(() => undefined);
+  if (!place) return undefined;
+  if (train) {
+    const sched = await cached(`schedule:${train}:stops`, 7 * 24 * 60 * 60_000, () => getSchedule(train)).then((r) => r.value).catch(() => undefined);
+    const codes = new Set(place.stations.map((s) => s.code));
+    const hit = sched?.stops.find((s) => codes.has(s.code));
+    if (hit) return hit.code;
+  }
+  return place.stations[0]?.code;
+}
+
+/** Plain text kept for searches that expand a city themselves */
+const placeText = (text?: string | null) => (text ? sanitizeQuery(text, 60) || undefined : undefined);
+
+/**
+ * Models sometimes swap origin and destination. When the request says "from X",
+ * whichever of the two names follows "from" first is the origin.
+ */
+function fixOrder(q: string, p: Parsed): Parsed {
+  if (!p.from || !p.to) return p;
+  const lower = q.toLowerCase();
+  const at = lower.search(/\bfrom\b/);
+  if (at < 0) return p;
+  const f = lower.indexOf(p.from.toLowerCase(), at);
+  const t = lower.indexOf(p.to.toLowerCase(), at);
+  const swap = t >= 0 && (f < 0 || t < f);
+  return swap ? { ...p, from: p.to, to: p.from } : p;
 }
 
 async function airportCode(text?: string | null): Promise<string | undefined> {
@@ -114,15 +145,19 @@ async function toIntent(p: Parsed, today: string): Promise<AssistantIntent | nul
       return { href: `${path}?${qs({ train })}`, summary: train ? `${p.tool === "train_schedule" ? "Timetable" : "Route"} of train ${train}` : "Train timetable" };
     }
     case "trains_between": {
-      const [from, to] = await Promise.all([stationCode(p.from), stationCode(p.to)]);
-      return { href: `/trains-between-stations?${qs({ from, to, date: date ?? today })}`, summary: from && to ? `Trains from ${from} to ${to}` : "Trains between stations" };
+      // The search expands cities to all their main stations
+      const from = placeText(p.from);
+      const to = placeText(p.to);
+      return { href: `/trains-between-stations?${qs({ from, to, date: date ?? today })}`, summary: from && to ? `trains from ${from} to ${to}` : "Trains between stations" };
     }
     case "seats": {
-      const [train, from, to] = await Promise.all([trainNumber(p.train), stationCode(p.from), stationCode(p.to)]);
+      const train = await trainNumber(p.train);
+      const [from, to] = await Promise.all([stopOn(train, p.from), stopOn(train, p.to)]);
       return { href: `/seat-availability?${qs({ train, from, to, date, class: p.travelClass, quota: p.quota })}`, summary: train ? `Seats and fare on ${train}` : "Seats and fare" };
     }
     case "vacancy": {
-      const [train, boarding] = await Promise.all([trainNumber(p.train), stationCode(p.station ?? p.from)]);
+      const train = await trainNumber(p.train);
+      const boarding = await stopOn(train, p.station ?? p.from);
       return { href: `/chart-vacancy?${qs({ train, boarding, date, class: p.travelClass })}`, summary: train ? `Vacant berths on ${train}` : "Vacant berths" };
     }
     case "cancelled":
@@ -159,7 +194,7 @@ export const POST = handle({ group: "assistant-search", limit: 20, cacheControl:
   const today = todayIST();
   const { value } = await cached(`ask:${today}:${q.toLowerCase()}`, 60 * 60_000, async () => {
     const parsed = await generateJson<Parsed>(system(today), [{ text: q }], SCHEMA);
-    return toIntent(parsed, today);
+    return toIntent(fixOrder(q, parsed), today);
   });
   if (!value) throw new ApiError("NO_RESULTS", "I can help with trains, PNRs, flights, airports, stations and weather. Try asking about one of those.");
   return { data: value, meta: { fetchedAt: Date.now(), cached: false, source: geminiSource, live: false } };
