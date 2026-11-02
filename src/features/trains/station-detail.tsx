@@ -45,7 +45,7 @@ export function StationDetail({ code, station }: { code: string; station: Statio
                   {hasSpot && <div className="col-span-2"><dt className="text-slate-500">{station.exact ? "Location" : "Approximate location"}</dt><dd className="font-medium tabular-nums">{station.lat!.toFixed(3)}, {station.lon!.toFixed(3)}</dd></div>}
                 </>
               )}
-              <div className="col-span-2"><dt className="text-slate-500">Platforms</dt><dd className="text-slate-700">Platform numbers appear on individual trains below when the provider reports them.</dd></div>
+              <div className="col-span-2"><dt className="text-slate-500">Platforms</dt><dd className="text-slate-700">Platform numbers appear on individual trains below when reported.</dd></div>
             </dl>
             <div className="mt-4 flex flex-wrap gap-2">
               <ShareButton title={`${station?.name ?? code} arrivals & departures`} />

@@ -172,7 +172,7 @@ function Results({ result, meta, refreshing, refresh, from, to, date }: { result
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {t.estimatedFare ? <span className="rounded-full bg-ink px-2.5 py-1 font-mono text-[12px] font-bold text-signal" title="Indicative fare from the provider">from ₹{t.estimatedFare.toLocaleString("en-IN")}</span> : null}
+                  {t.estimatedFare ? <span className="rounded-full bg-ink px-2.5 py-1 font-mono text-[12px] font-bold text-signal" title="Estimated fare">from ₹{t.estimatedFare.toLocaleString("en-IN")}</span> : null}
                   {t.distanceKm ? <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[12px] text-slate-600">{t.distanceKm.toLocaleString("en-IN")} km</span> : null}
                   {t.classes.map((c) => <span key={c} className={cx("rounded-md border px-1.5 py-0.5 text-xs font-semibold", cls === c ? "border-ink bg-signal-soft text-ink" : "border-slate-200 text-slate-600")}>{c}</span>)}
                 </div>

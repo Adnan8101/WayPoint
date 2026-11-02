@@ -106,7 +106,7 @@ function Results({ data, meta, refreshing, refresh, from, to, date, pax, cls }: 
       </div>
       <Freshness meta={meta} onRefresh={refresh} refreshing={refreshing} />
       <p className="rounded-2xl bg-sky-50 px-4 py-2.5 text-sm text-sky-900 ring-1 ring-inset ring-sky-200/70">
-        Showing direct flights from the departure schedule. Fares are not available from our data source, so check the airline for prices and seat availability.
+        Showing direct flights from the departure schedule. Check the airline for prices and seat availability.
       </p>
       <ul className="space-y-3">
         {rows.map((f) => (

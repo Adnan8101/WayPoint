@@ -111,7 +111,7 @@ export function SeatsView() {
             ) : (
               <RouteView from={q.from} to={q.to} date={q.date} cls={cls} quota={quota} onDate={(d) => setParams({ date: d })} />
             )}
-            <p className="text-[12.5px] text-slate-500">Availability and fares come from Indian Railways via irctc.dev and change constantly. Book only on IRCTC or an authorised agent.</p>
+            <p className="text-[12.5px] text-slate-500">Availability and fares change constantly. Book only through an authorised agent.</p>
           </div>
         )}
       </Section>

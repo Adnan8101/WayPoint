@@ -73,7 +73,7 @@ function Summary({ s, meta, refreshing, refresh }: { s: TrainSchedule; meta: Api
           <ShareButton title={`${s.trainNumber} schedule`} />
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Box label="Source" value={`${s.source.name ?? ""} (${s.source.code})`} />
+          <Box label="Origin" value={`${s.source.name ?? ""} (${s.source.code})`} />
           <Box label="Destination" value={`${s.destination.name ?? ""} (${s.destination.code})`} />
           <Box label="Total duration" value={fmtDuration(s.totalDurationMinutes)} />
           <Box label="Total distance" value={s.totalDistanceKm !== undefined ? `${Math.round(s.totalDistanceKm)} km` : "—"} />
@@ -166,7 +166,7 @@ function RouteOverview({ s }: { s: TrainSchedule }) {
                   </p>
                 </div>
                 <p className="text-xs text-slate-500">
-                  {x.distanceKm !== undefined ? `${Math.round(x.distanceKm)} km from source` : ""}
+                  {x.distanceKm !== undefined ? `${Math.round(x.distanceKm)} km from origin` : ""}
                   {x.arrival && x.departure && x.haltMinutes ? ` · halt ${x.haltMinutes} min` : ""}
                   {x.day ? ` · day ${x.day}` : ""}
                 </p>

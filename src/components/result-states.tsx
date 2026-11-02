@@ -16,7 +16,7 @@ const ERROR_TITLES: Record<ErrorCode, string> = {
   NO_RESULTS: "Nothing found",
   UNAVAILABLE: "Live information isn't available right now",
   NOT_CONFIGURED: "Live information isn't available right now",
-  SERVICE_FAILURE: "Our data source is having trouble",
+  SERVICE_FAILURE: "Unable to retrieve data right now",
   TIMEOUT: "That took too long",
   RATE_LIMITED: "Too many searches at once",
 };
@@ -35,7 +35,7 @@ export function ErrorState({ code, message, onRetry }: { code: ErrorCode; messag
         <h3 className="font-display text-[20px] font-semibold text-ink">{ERROR_TITLES[code]}</h3>
         <p className="mt-0.5 text-[14.5px] text-slate-600">{message}</p>
         {!isInput && (
-          <p className="mt-1.5 text-[13px] text-slate-400">We only show what our data sources actually report. We never guess or fill in gaps.</p>
+          <p className="mt-1.5 text-[13px] text-slate-400">We only show verified data. We never guess or fill in gaps.</p>
         )}
       </div>
       {onRetry && RETRYABLE.has(code) && (
@@ -90,9 +90,9 @@ export function ResultSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-/** Data source and freshness bar with refresh. Flags data as outdated after `staleAfterMs`. */
+/** Freshness bar with refresh. Flags data as outdated after `staleAfterMs`. */
 export function Freshness({
-  meta, onRefresh, refreshing, staleAfterMs = 10 * 60_000, providerLabel = "Provider update",
+  meta, onRefresh, refreshing, staleAfterMs = 10 * 60_000, providerLabel = "Last updated",
 }: { meta: ApiMeta; onRefresh?: () => void; refreshing?: boolean; staleAfterMs?: number; providerLabel?: string }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -114,7 +114,6 @@ export function Freshness({
         </span>
         <span>Updated {fmtRelative(meta.fetchedAt, now)} <span className="text-slate-400">· {fmtDateTime(meta.fetchedAt)}</span></span>
         {meta.providerUpdatedAt && <span className="hidden sm:inline">{providerLabel} {fmtRelative(meta.providerUpdatedAt, now)}</span>}
-        <span className="hidden text-slate-400 md:inline">via {meta.source}</span>
         {onRefresh && (
           <button
             type="button"
